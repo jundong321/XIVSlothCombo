@@ -366,8 +366,8 @@ namespace XIVSlothCombo.Combos.PvE
         }
 
         /*
-        * SCH_Ruin
-        * Put Bio on Ruin when needs dot.
+        * SCH_Ruin2
+        * Put Bio I/II on Ruin II when needs DoT.
        */
         internal class SCH_Ruin2 : CustomCombo
         {
