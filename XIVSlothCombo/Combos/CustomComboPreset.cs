@@ -2706,8 +2706,8 @@ namespace XIVSlothCombo.Combos
             SCH_DPS_Bio = 16150,
 
         [ReplaceSkill(SCH.ArtOfWar, SCH.ArtOfWarII)]
-        [CustomComboInfo("AoE DPS Feature", "Replaces Art of War with options below", SCH.JobID, 101)]
-        SCH_AoE = 16101,
+        [CustomComboInfo("AoE DPS Feature", "Replaces Art of War with options below", SCH.JobID, 110)]
+        SCH_AoE = 16110,
 
             [ParentCombo(SCH_AoE)]
             [CustomComboInfo("Lucid Dreaming Weave Option", "Adds Lucid Dreaming when MP drops below slider value:", SCH.JobID)]
@@ -2715,7 +2715,11 @@ namespace XIVSlothCombo.Combos
 
             [ParentCombo(SCH_AoE)]
             [CustomComboInfo("Aetherflow Weave Option", "Use Aetherflow when out of aetherflow stacks", SCH.JobID)]
-            SCH_AoE_Aetherflow = 16121,
+            SCH_AoE_Aetherflow = 16112,
+
+        [ReplaceSkill(SCH.Ruin2)]
+        [CustomComboInfo("Bio II on Ruin II", "Put Bio I/II on Ruin II when needs DoT", SCH.JobID, 120)]
+        SCH_Ruin2 = 16120,
 
         #endregion
 

@@ -364,5 +364,27 @@ namespace XIVSlothCombo.Combos.PvE
                 return actionID;
             }
         }
+
+        /*
+        * SCH_Ruin2
+        * Put Bio I/II on Ruin II when needs DoT.
+       */
+        internal class SCH_Ruin2 : CustomCombo
+        {
+            protected internal override CustomComboPreset Preset { get; } = CustomComboPreset.SCH_Ruin2;
+            protected override uint Invoke(uint actionID, uint lastComboMove, float comboTime, byte level)
+            {
+                if (LevelChecked(Bio))
+                {
+                    uint dot = OriginalHook(Bio); // Grab the appropriate DoT Action
+                    Status? dotDebuff = FindTargetEffect(BioList[dot]); // Match it with it's Debuff ID, and check for the Debuff
+
+                    if ((dotDebuff is null || dotDebuff?.RemainingTime <= 3) &&
+                        (GetTargetHPPercent() > Config.SCH_ST_DPS_BioOption))
+                        return dot; // Use appropriate DoT Action
+                }
+                return actionID;
+            }
+        }
     }
 }
