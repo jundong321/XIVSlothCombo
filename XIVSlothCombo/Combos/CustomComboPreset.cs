@@ -2718,7 +2718,7 @@ namespace XIVSlothCombo.Combos
             SCH_AoE_Aetherflow = 16172,
 
         [ReplaceSkill(SCH.Ruin2)]
-        [CustomComboInfo("Bio II on Ruin II", "Put Bio I/II on Ruin II when needs DoT", SCH.JobID, 180, "", "")]
+        [CustomComboInfo("Bio I/II on Ruin II", "Put Bio I/II on Ruin II when needs DoT", SCH.JobID, 180, "", "")]
         SCH_Ruin2 = 16180,
 
         #endregion

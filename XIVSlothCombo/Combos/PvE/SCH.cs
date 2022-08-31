@@ -374,7 +374,7 @@ namespace XIVSlothCombo.Combos.PvE
             protected internal override CustomComboPreset Preset { get; } = CustomComboPreset.SCH_Ruin2;
             protected override uint Invoke(uint actionID, uint lastComboMove, float comboTime, byte level)
             {
-                if (LevelChecked(Bio))
+                if (actionID is Ruin2 && LevelChecked(Bio))
                 {
                     uint dot = OriginalHook(Bio); // Grab the appropriate DoT Action
                     Status? dotDebuff = FindTargetEffect(BioList[dot]); // Match it with it's Debuff ID, and check for the Debuff
