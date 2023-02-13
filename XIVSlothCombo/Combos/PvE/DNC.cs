@@ -47,7 +47,9 @@ namespace XIVSlothCombo.Combos.PvE
             ShieldSamba = 16012,
             Flourish = 16013,
             Improvisation = 16014,
-            CuringWaltz = 16015;
+            CuringWaltz = 16015,
+            FootGraze = 7553,
+            LegGraze = 7554;
 
         public static class Buffs
         {
@@ -741,6 +743,365 @@ namespace XIVSlothCombo.Combos.PvE
                     #endregion
                 }
 
+                return actionID;
+            }
+        }
+
+        internal class DNC_ST_FillingMode : CustomCombo
+        {
+            protected internal override CustomComboPreset Preset { get; } = CustomComboPreset.DNC_ST_FillingMode;
+
+            protected override uint Invoke(uint actionID, uint lastComboMove, float comboTime, byte level)
+            {
+                if (actionID is Cascade)
+                {
+                    #region Types
+                    DNCGauge? gauge = GetJobGauge<DNCGauge>();
+                    bool flow = HasEffect(Buffs.SilkenFlow) || HasEffect(Buffs.FlourishingFlow);
+                    bool symmetry = HasEffect(Buffs.SilkenSymmetry) || HasEffect(Buffs.FlourishingSymmetry);
+                    bool flowExpiring = AboutToExpire(Buffs.SilkenFlow) || AboutToExpire(Buffs.FlourishingFlow);
+                    bool symmetryExpiring = AboutToExpire(Buffs.SilkenSymmetry) || AboutToExpire(Buffs.FlourishingSymmetry);
+                    bool comboExpiring = (lastComboMove == DNC.Cascade && comboTime < 2.5f);
+                    #endregion
+
+                    #region Weaves
+                    if (CanWeave(Cascade))
+                    {
+                        // Fan Dance 3 if any.
+                        if (HasEffect(Buffs.ThreeFoldFanDance))
+                            return FanDance3;
+
+                        // Fan Dance 1 if Feather count > 3.
+                        if (gauge.Feathers > 3)
+                            return FanDance1;
+
+                        // Fan Dance 4 if any.
+                        if (HasEffect(Buffs.FourFoldFanDance))
+                            return FanDance4;
+
+                        // Flourish if cooldown of Technical Dance is greater than 45s.
+                        if (ActionReady(Flourish) && GetCooldownRemainingTime(TechnicalStep) > 45f)
+                            return Flourish;
+                    }
+                    #endregion
+
+                    #region GCD
+                    // Dance steps.
+                    if (gauge.IsDancing)
+                    {
+                        if (HasEffect(Buffs.StandardStep))
+                            return gauge.CompletedSteps < 2 ? gauge.NextStep : StandardFinish2;
+
+                        if (HasEffect(Buffs.TechnicalStep))
+                            return gauge.CompletedSteps < 4 ? gauge.NextStep : TechnicalFinish4;
+                    }
+
+                    // Expiring Fountainfall.
+                    if (flowExpiring)
+                        return Fountainfall;
+
+                    // Expiring ReverseCascade.
+                    if (symmetryExpiring)
+                        return ReverseCascade;
+
+                    // Saber Dance overcap.
+                    if (gauge.Esprit >= 85)
+                        return SaberDance;
+
+                    // Expiring combo.
+                    if (comboExpiring)
+                        return Fountain;
+
+                    if (lastComboMove is Cascade)
+                    {
+                        // FountainFall.
+                        if (flow)
+                            return Fountainfall;
+
+                        // Fountain.
+                        return Fountain;
+                    }
+
+                    // ReverseCascade.
+                    if (symmetry)
+                        return ReverseCascade;
+
+                    // Cascade.
+                    return Cascade;
+                    #endregion
+                }
+                return actionID;
+            }
+        }
+
+        internal class DNC_ST_BurstMode : CustomCombo
+        {
+            protected internal override CustomComboPreset Preset { get; } = CustomComboPreset.DNC_ST_BurstMode;
+
+            protected override uint Invoke(uint actionID, uint lastComboMove, float comboTime, byte level)
+            {
+                if (actionID is FootGraze)
+                {
+                    #region Types
+                    DNCGauge? gauge = GetJobGauge<DNCGauge>();
+                    bool flow = HasEffect(Buffs.SilkenFlow) || HasEffect(Buffs.FlourishingFlow);
+                    bool symmetry = HasEffect(Buffs.SilkenSymmetry) || HasEffect(Buffs.FlourishingSymmetry);
+                    bool flowExpiring = AboutToExpire(Buffs.SilkenFlow) || AboutToExpire(Buffs.FlourishingFlow);
+                    bool symmetryExpiring = AboutToExpire(Buffs.SilkenSymmetry) || AboutToExpire(Buffs.FlourishingSymmetry);
+                    bool comboExpiring = (lastComboMove == DNC.Cascade && comboTime < 2.5f);
+                    #endregion
+
+                    #region Weaves
+                    if (CanWeave(Cascade))
+                    {
+                        // Devilment.
+                        if (ActionReady(Devilment))
+                            return Devilment;
+
+                        // Fan Dance 3 if any.
+                        if (HasEffect(Buffs.ThreeFoldFanDance))
+                            return FanDance3;
+
+                        // Fan Dance 1 if Feather count > 3.
+                        if (gauge.Feathers > 3)
+                            return FanDance1;
+
+                        // Fan Dance 4 if any.
+                        if (HasEffect(Buffs.FourFoldFanDance))
+                            return FanDance4;
+
+                        // Flourish.
+                        if (ActionReady(Flourish))
+                            return Flourish;
+
+                        // Fan Dance 1.
+                        if (gauge.Feathers > 0)
+                            return FanDance1;
+                    }
+                    #endregion
+
+                    #region GCD
+                    // Dance steps.
+                    if (gauge.IsDancing)
+                    {
+                        if (HasEffect(Buffs.StandardStep))
+                            return gauge.CompletedSteps < 2 ? gauge.NextStep : StandardFinish2;
+
+                        if (HasEffect(Buffs.TechnicalStep))
+                            return gauge.CompletedSteps < 4 ? gauge.NextStep : TechnicalFinish4;
+                    }
+
+                    // Expiring Fountainfall.
+                    if (flowExpiring)
+                        return Fountainfall;
+
+                    // Expiring ReverseCascade.
+                    if (symmetryExpiring)
+                        return ReverseCascade;
+
+                    // Saber Dance overcap.
+                    if (gauge.Esprit >= 85)
+                        return SaberDance;
+
+                    // Expiring combo.
+                    if (comboExpiring)
+                        return Fountain;
+
+                    // Tillana.
+                    if (HasEffect(Buffs.FlourishingFinish))
+                        return Tillana;
+
+                    // Starfall Dance.
+                    if (HasEffect(Buffs.FlourishingStarfall))
+                        return StarfallDance;
+
+                    // Saber Dance.
+                    if (LevelChecked(SaberDance) && gauge.Esprit >= 50)
+                        return SaberDance;
+
+                    // Fountain fall.
+                    if (flow)
+                        return Fountainfall;
+
+                    // ReverseCascade.
+                    if (symmetry)
+                        return ReverseCascade;
+
+                    // Cascade Combo.
+                    if (lastComboMove == Cascade)
+                        return Fountain;
+
+                    // Cascade.
+                    return Cascade;
+                    #endregion
+                }
+                return actionID;
+            }
+        }
+
+
+        internal class DNC_AOE_FillingMode : CustomCombo
+        {
+            protected internal override CustomComboPreset Preset { get; } = CustomComboPreset.DNC_AOE_FillingMode;
+
+            protected override uint Invoke(uint actionID, uint lastComboMove, float comboTime, byte level)
+            {
+                if (actionID is Windmill)
+                {
+                    #region Types
+                    DNCGauge? gauge = GetJobGauge<DNCGauge>();
+                    bool flow = HasEffect(Buffs.SilkenFlow) || HasEffect(Buffs.FlourishingFlow);
+                    bool symmetry = HasEffect(Buffs.SilkenSymmetry) || HasEffect(Buffs.FlourishingSymmetry);
+                    #endregion
+
+                    #region Weaves
+                    if (CanWeave(Windmill))
+                    {
+                        // Fan Dance 3 if any.
+                        if (HasEffect(Buffs.ThreeFoldFanDance))
+                            return FanDance3;
+
+                        // Fan Dance 2/1 if Feather count > 3.
+                        if (gauge.Feathers > 3)
+                        {
+                            if (LevelChecked(FanDance2))
+                                return FanDance2;
+                            return FanDance1;
+                        }
+
+                        // Fan Dance 4 if any.
+                        if (HasEffect(Buffs.FourFoldFanDance))
+                            return FanDance4;
+
+                        // Flourish if cooldown of Technical Dance is greater than 45s.
+                        if (ActionReady(Flourish) && GetCooldownRemainingTime(TechnicalStep) > 45f)
+                            return Flourish;
+                    }
+                    #endregion
+
+                    #region GCD
+                    // Dance steps.
+                    if (gauge.IsDancing)
+                    {
+                        if (HasEffect(Buffs.StandardStep))
+                            return gauge.CompletedSteps < 2 ? gauge.NextStep : StandardFinish2;
+
+                        if (HasEffect(Buffs.TechnicalStep))
+                            return gauge.CompletedSteps < 4 ? gauge.NextStep : TechnicalFinish4;
+                    }
+
+                    // Saber Dance if espirit >= 85.
+                    if (gauge.Esprit >= 85)
+                        return SaberDance;
+
+                    if (lastComboMove is Windmill)
+                    {
+                        if (flow)
+                            return Bloodshower;
+
+                        return Bladeshower;
+                    }
+
+                    if (symmetry)
+                        return RisingWindmill;
+
+                    return Windmill;
+                    #endregion
+                }
+                return actionID;
+            }
+        }
+
+        internal class DNC_AOE_BurstMode : CustomCombo
+        {
+            protected internal override CustomComboPreset Preset { get; } = CustomComboPreset.DNC_AOE_BurstMode;
+
+            protected override uint Invoke(uint actionID, uint lastComboMove, float comboTime, byte level)
+            {
+                if (actionID is LegGraze)
+                {
+                    #region Types
+                    DNCGauge? gauge = GetJobGauge<DNCGauge>();
+                    bool flow = HasEffect(Buffs.SilkenFlow) || HasEffect(Buffs.FlourishingFlow);
+                    bool symmetry = HasEffect(Buffs.SilkenSymmetry) || HasEffect(Buffs.FlourishingSymmetry);
+                    #endregion
+
+                    #region Weaves
+                    if (CanWeave(Windmill))
+                    {
+                        // Devilment.
+                        if (ActionReady(Devilment))
+                            return Devilment;
+
+                        // Fan Dance 3 if any.
+                        if (HasEffect(Buffs.ThreeFoldFanDance))
+                            return FanDance3;
+
+                        // Fan Dance 2/1 if Feather count > 3.
+                        if (gauge.Feathers > 3)
+                        {
+                            if (LevelChecked(FanDance2))
+                                return FanDance2;
+                            return FanDance1;
+                        }
+
+                        // Fan Dance 4 if any.
+                        if (HasEffect(Buffs.FourFoldFanDance))
+                            return FanDance4;
+
+                        // Flourish.
+                        if (ActionReady(Flourish))
+                            return Flourish;
+
+                        // Fan Dance 2/1.
+                        if (gauge.Feathers > 0)
+                        {
+                            if (LevelChecked(FanDance2))
+                                return FanDance2;
+                            return FanDance1;
+                        }
+                    }
+                    #endregion
+
+                    #region GCD
+                    // Dance steps.
+                    if (gauge.IsDancing)
+                    {
+                        if (HasEffect(Buffs.StandardStep))
+                            return gauge.CompletedSteps < 2 ? gauge.NextStep : StandardFinish2;
+
+                        if (HasEffect(Buffs.TechnicalStep))
+                            return gauge.CompletedSteps < 4 ? gauge.NextStep : TechnicalFinish4;
+                    }
+
+                    // Saber Dance if espirit >= 85.
+                    if (gauge.Esprit >= 85)
+                        return SaberDance;
+
+                    // Tillana.
+                    if (HasEffect(Buffs.FlourishingFinish))
+                        return Tillana;
+
+                    // Starfall Dance.
+                    if (HasEffect(Buffs.FlourishingStarfall))
+                        return StarfallDance;
+
+                    // Saber Dance.
+                    if (gauge.Esprit >= 50)
+                        return SaberDance;
+
+                    if (flow)
+                        return Bloodshower;
+
+                    if (symmetry)
+                        return RisingWindmill;
+
+                    if (lastComboMove == Windmill)
+                        return Bladeshower;
+
+                    return Windmill;
+                    #endregion
+                }
                 return actionID;
             }
         }
