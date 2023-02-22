@@ -2,6 +2,7 @@
 using Dalamud.Game.ClientState.Statuses;
 using XIVSlothCombo.Data;
 using XIVSlothCombo.Services;
+using System;
 
 namespace XIVSlothCombo.CustomComboNS.Functions
 {
@@ -21,7 +22,7 @@ namespace XIVSlothCombo.CustomComboNS.Functions
         public static float GetBuffRemainingTime(ushort effectId)
         {
             Status? eff = FindEffect(effectId);
-            return eff?.RemainingTime ?? 0;
+            return Math.Abs(eff?.RemainingTime ?? 0);
         }
 
         public static bool AboutToExpire(ushort effectId) => HasEffect(effectId) && GetBuffRemainingTime(effectId) < 2.5f;

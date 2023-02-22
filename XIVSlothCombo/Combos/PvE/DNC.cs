@@ -764,6 +764,16 @@ namespace XIVSlothCombo.Combos.PvE
                     bool comboExpiring = (lastComboMove == DNC.Cascade && comboTime < 2.5f);
                     #endregion
 
+                    // Dance steps.
+                    if (gauge.IsDancing)
+                    {
+                        if (HasEffect(Buffs.StandardStep))
+                            return gauge.CompletedSteps < 2 ? gauge.NextStep : StandardFinish2;
+
+                        if (HasEffect(Buffs.TechnicalStep))
+                            return gauge.CompletedSteps < 4 ? gauge.NextStep : TechnicalFinish4;
+                    }
+
                     #region Weaves
                     if (CanWeave(Cascade))
                     {
@@ -786,16 +796,6 @@ namespace XIVSlothCombo.Combos.PvE
                     #endregion
 
                     #region GCD
-                    // Dance steps.
-                    if (gauge.IsDancing)
-                    {
-                        if (HasEffect(Buffs.StandardStep))
-                            return gauge.CompletedSteps < 2 ? gauge.NextStep : StandardFinish2;
-
-                        if (HasEffect(Buffs.TechnicalStep))
-                            return gauge.CompletedSteps < 4 ? gauge.NextStep : TechnicalFinish4;
-                    }
-
                     // Expiring Fountainfall.
                     if (flowExpiring)
                         return Fountainfall;
@@ -851,6 +851,16 @@ namespace XIVSlothCombo.Combos.PvE
                     bool comboExpiring = (lastComboMove == DNC.Cascade && comboTime < 2.5f);
                     #endregion
 
+                    // Dance steps.
+                    if (gauge.IsDancing)
+                    {
+                        if (HasEffect(Buffs.StandardStep))
+                            return gauge.CompletedSteps < 2 ? gauge.NextStep : StandardFinish2;
+
+                        if (HasEffect(Buffs.TechnicalStep))
+                            return gauge.CompletedSteps < 4 ? gauge.NextStep : TechnicalFinish4;
+                    }
+
                     #region Weaves
                     if (CanWeave(Cascade))
                     {
@@ -881,16 +891,6 @@ namespace XIVSlothCombo.Combos.PvE
                     #endregion
 
                     #region GCD
-                    // Dance steps.
-                    if (gauge.IsDancing)
-                    {
-                        if (HasEffect(Buffs.StandardStep))
-                            return gauge.CompletedSteps < 2 ? gauge.NextStep : StandardFinish2;
-
-                        if (HasEffect(Buffs.TechnicalStep))
-                            return gauge.CompletedSteps < 4 ? gauge.NextStep : TechnicalFinish4;
-                    }
-
                     // Expiring Fountainfall.
                     if (flowExpiring)
                         return Fountainfall;
@@ -954,6 +954,16 @@ namespace XIVSlothCombo.Combos.PvE
                     bool symmetry = HasEffect(Buffs.SilkenSymmetry) || HasEffect(Buffs.FlourishingSymmetry);
                     #endregion
 
+                    // Dance steps.
+                    if (gauge.IsDancing)
+                    {
+                        if (HasEffect(Buffs.StandardStep))
+                            return gauge.CompletedSteps < 2 ? gauge.NextStep : StandardFinish2;
+
+                        if (HasEffect(Buffs.TechnicalStep))
+                            return gauge.CompletedSteps < 4 ? gauge.NextStep : TechnicalFinish4;
+                    }
+
                     #region Weaves
                     if (CanWeave(Windmill))
                     {
@@ -980,16 +990,6 @@ namespace XIVSlothCombo.Combos.PvE
                     #endregion
 
                     #region GCD
-                    // Dance steps.
-                    if (gauge.IsDancing)
-                    {
-                        if (HasEffect(Buffs.StandardStep))
-                            return gauge.CompletedSteps < 2 ? gauge.NextStep : StandardFinish2;
-
-                        if (HasEffect(Buffs.TechnicalStep))
-                            return gauge.CompletedSteps < 4 ? gauge.NextStep : TechnicalFinish4;
-                    }
-
                     // Saber Dance if espirit >= 85.
                     if (gauge.Esprit >= 85)
                         return SaberDance;
@@ -1025,6 +1025,16 @@ namespace XIVSlothCombo.Combos.PvE
                     bool flow = HasEffect(Buffs.SilkenFlow) || HasEffect(Buffs.FlourishingFlow);
                     bool symmetry = HasEffect(Buffs.SilkenSymmetry) || HasEffect(Buffs.FlourishingSymmetry);
                     #endregion
+
+                    // Dance steps.
+                    if (gauge.IsDancing)
+                    {
+                        if (HasEffect(Buffs.StandardStep))
+                            return gauge.CompletedSteps < 2 ? gauge.NextStep : StandardFinish2;
+
+                        if (HasEffect(Buffs.TechnicalStep))
+                            return gauge.CompletedSteps < 4 ? gauge.NextStep : TechnicalFinish4;
+                    }
 
                     #region Weaves
                     if (CanWeave(Windmill))
@@ -1064,16 +1074,6 @@ namespace XIVSlothCombo.Combos.PvE
                     #endregion
 
                     #region GCD
-                    // Dance steps.
-                    if (gauge.IsDancing)
-                    {
-                        if (HasEffect(Buffs.StandardStep))
-                            return gauge.CompletedSteps < 2 ? gauge.NextStep : StandardFinish2;
-
-                        if (HasEffect(Buffs.TechnicalStep))
-                            return gauge.CompletedSteps < 4 ? gauge.NextStep : TechnicalFinish4;
-                    }
-
                     // Saber Dance if espirit >= 85.
                     if (gauge.Esprit >= 85)
                         return SaberDance;
