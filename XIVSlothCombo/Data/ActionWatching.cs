@@ -139,6 +139,14 @@ namespace XIVSlothCombo.Data
 
         public static bool CheckWeave()
         {
+            /*
+            Service.ChatGui.Print($"You just used:");
+            for (int i = 0; i < CombatActions.Count; i++)
+            {
+                Service.ChatGui.Print($"{CombatActions[i]}: {GetAttackType(CombatActions[i])}");
+            }
+            */
+
             // Can weave if only had 0 or 1 actions.
             if (CombatActions.Count < 2)
                 return true;
