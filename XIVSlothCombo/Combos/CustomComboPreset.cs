@@ -698,7 +698,7 @@ namespace XIVSlothCombo.Combos
         [CustomComboInfo("Cure Option", "Use Variant Cure when HP is below set threshold.", BRD.JobID)]
         BRD_Variant_Cure = 3031,
 
-        [ReplaceSkill(BRD.FootGraze, BRD.LegGraze, BRD.Shadowbite)]
+        [ReplaceSkill(BRD.FootGraze, BRD.LegGraze, BRD.HeadGraze, BRD.Shadowbite)]
         //TODO: fix the conflicting combos and naming
         [CustomComboInfo("Perfect Mode", "", BRD.JobID)]
         BRD_Perfect_Mode = 3032,
