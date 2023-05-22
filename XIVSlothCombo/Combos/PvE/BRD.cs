@@ -40,7 +40,9 @@ namespace XIVSlothCombo.Combos.PvE
             Shadowbite = 16494,
             Ladonsbite = 25783,
             BlastArrow = 25784,
-            RadiantFinale = 25785;
+            RadiantFinale = 25785,
+            FootGraze = 7553,
+            LegGraze = 7554;
 
         public static class Buffs
         {
@@ -864,137 +866,150 @@ namespace XIVSlothCombo.Combos.PvE
             }
         }
 
-        internal class BRD_ST_Perfect_Mode : CustomCombo
+        internal class BRD_Perfect_Mode : CustomCombo
         {
-            protected internal override CustomComboPreset Preset { get; } = CustomComboPreset.BRD_ST_Perfect_Mode;
+            protected internal override CustomComboPreset Preset { get; } = CustomComboPreset.BRD_Perfect_Mode;
+
+            protected uint CalculatePerfectSkill(bool singleTarget, bool dot)
+            {
+                #region Initial Values
+                uint heavyShot = singleTarget ? HeavyShot : QuickNock;
+                uint burstShot = singleTarget ? BurstShot : Ladonsbite;
+                uint bloodLetter = singleTarget ? Bloodletter : RainOfDeath;
+                #endregion
+
+                #region Status
+                BRDGauge? gauge = GetJobGauge<BRDGauge>();
+
+                float timeUntilFullPower = HasEffect(Buffs.ArmysMuse) ? 3.2f : 3f;
+                bool fullPower = HasEffect(Buffs.RagingStrikes) && GetBuffRemainingTime(Buffs.RagingStrikes) <= (20f - timeUntilFullPower);
+                bool farFromFullPower = GetCooldownRemainingTime(RagingStrikes) is > 40 and < 100;
+                Func<float, bool> EndOfFullPower = (time) => LevelChecked(RadiantFinale) ? HasEffect(Buffs.RadiantFinale) && GetBuffRemainingTime(Buffs.RadiantFinale) <= time : HasEffect(Buffs.BattleVoice) && GetBuffRemainingTime(Buffs.BattleVoice) <= time;
+                #endregion
+
+                #region Weaves
+                if (CanWeave(HeavyShot, 0.7))
+                {
+                    // Song helper
+                    if (gauge.Song == Song.NONE)
+                    {
+                        if (ActionReady(WanderersMinuet))
+                            return WanderersMinuet;
+                        if (ActionReady(MagesBallad))
+                            return MagesBallad;
+                        if (ActionReady(ArmysPaeon))
+                            return ArmysPaeon;
+                    }
+
+                    // Buffs
+                    if (fullPower)
+                    {
+                        if (ActionReady(RadiantFinale))
+                            return RadiantFinale;
+                        if (ActionReady(BattleVoice))
+                            return BattleVoice;
+                    }
+
+                    // Song PROC
+                    if (gauge.Song == Song.WANDERER)
+                    {
+                        if (gauge.Repertoire == 3)
+                            return OriginalHook(WanderersMinuet);
+                        if (gauge.Repertoire == 2 && GetCooldownRemainingTime(EmpyrealArrow) < 2)
+                            return OriginalHook(WanderersMinuet);
+                        if (gauge.Repertoire > 0 && gauge.SongTimer / 1000 < 3)
+                            return OriginalHook(WanderersMinuet);
+                    }
+
+                    if (ActionReady(EmpyrealArrow))
+                        return EmpyrealArrow;
+
+                    // Bloodletter Overflow
+                    if (ActionReady(bloodLetter))
+                    {
+                        ushort charges = GetRemainingCharges(bloodLetter);
+                        ushort fullCharges = LocalPlayer.Level >= 84 ? (ushort)3 : (ushort)2;
+                        float nextChargeTime = gauge.Song == Song.MAGE ? 7.5f : 0f;
+                        if (charges == fullCharges)
+                            return bloodLetter;
+                        if (fullCharges - charges == 1 && GetCooldownRemainingTime(bloodLetter) < (nextChargeTime + 2.5f))
+                            return bloodLetter;
+                    }
+
+                    if (ActionReady(Barrage) && !HasEffect(Buffs.StraightShotReady) && fullPower)
+                        return Barrage;
+                    if (ActionReady(Sidewinder) && (fullPower || farFromFullPower))
+                        return Sidewinder;
+                    if (ActionReady(bloodLetter) && (fullPower || farFromFullPower))
+                        return bloodLetter;
+
+                    // Pitch Perfect at the end of fullPower
+                    if (gauge.Song == Song.WANDERER && gauge.Repertoire > 0 && EndOfFullPower(1))
+                       return OriginalHook(WanderersMinuet);
+                }
+                #endregion
+
+                #region GCD
+                // DOT
+                if (dot && GetTargetHPPercent() > 2)
+                {
+                    if (LocalPlayer.Level >= 64)
+                    {
+                        bool stormbite = TargetHasEffect(Debuffs.Stormbite);
+                        bool caustic = TargetHasEffect(Debuffs.CausticBite);
+                        float stormRemaining = GetDebuffRemainingTime(Debuffs.Stormbite);
+                        float causticRemaining = GetDebuffRemainingTime(Debuffs.CausticBite);
+                        if (!stormbite)
+                            return Stormbite;
+                        if (!caustic)
+                            return CausticBite;
+                        if (ActionReady(IronJaws) && (stormRemaining < 4 || causticRemaining < 4))
+                            return IronJaws;
+                    }
+                    else
+                    {
+                        bool venomous = TargetHasEffect(Debuffs.VenomousBite);
+                        bool windbite = TargetHasEffect(Debuffs.Windbite);
+                        float venomRemaining = GetDebuffRemainingTime(Debuffs.VenomousBite);
+                        float windRemaining = GetDebuffRemainingTime(Debuffs.Windbite);
+                        if (!venomous)
+                            return VenomousBite;
+                        if (!windbite)
+                            return Windbite;
+                        if (ActionReady(IronJaws) && (venomRemaining < 4 || windRemaining < 4))
+                            return IronJaws;
+                    }
+                }
+
+                // Apex Arrow
+                if (gauge.SoulVoice == 100 && fullPower)
+                    return ApexArrow;
+                if (gauge.SoulVoice >= 80 && EndOfFullPower(5f))
+                    return ApexArrow;
+                if (gauge.SoulVoice == 100 && GetCooldownRemainingTime(RagingStrikes) is >= 52 and < 100)
+                    return ApexArrow;
+                if (gauge.SoulVoice >= 80 && GetCooldownRemainingTime(RagingStrikes) is > 45 and < 52)
+                    return ApexArrow;
+
+                if (HasEffect(Buffs.BlastArrowReady))
+                    return BlastArrow;
+                if (HasEffect(Buffs.StraightShotReady) && singleTarget)
+                    return OriginalHook(StraightShot);
+
+                if (LevelChecked(burstShot))
+                    return burstShot;
+                return heavyShot;
+                #endregion
+            }
 
             protected override uint Invoke(uint actionID, uint lastComboActionID, float comboTime, byte level)
             {
-                if (actionID is RefulgentArrow)
-                {
-                    #region Status
-                    BRDGauge? gauge = GetJobGauge<BRDGauge>();
-
-                    float timeUntilFullPower = HasEffect(Buffs.ArmysMuse) ? 3.2f : 3f;
-                    bool fullPower = HasEffect(Buffs.RagingStrikes) && GetBuffRemainingTime(Buffs.RagingStrikes) <= (20f - timeUntilFullPower);
-                    bool farFromFullPower = GetCooldownRemainingTime(RagingStrikes) is > 40 and < 100;
-                    Func<float, bool> EndOfFullPower = (time) => LevelChecked(RadiantFinale) ? HasEffect(Buffs.RadiantFinale) && GetBuffRemainingTime(Buffs.RadiantFinale) <= time : HasEffect(Buffs.BattleVoice) && GetBuffRemainingTime(Buffs.BattleVoice) <= time;
-                    #endregion
-
-                    #region Weaves
-                    if (CanWeave(RefulgentArrow, 0.7))
-                    {
-                        // Song helper
-                        if (gauge.Song == Song.NONE)
-                        {
-                            if (ActionReady(WanderersMinuet))
-                                return WanderersMinuet;
-                            if (ActionReady(MagesBallad))
-                                return MagesBallad;
-                            if (ActionReady(ArmysPaeon))
-                                return ArmysPaeon;
-                        }
-
-                        // Buffs
-                        if (fullPower)
-                        {
-                            if (ActionReady(RadiantFinale))
-                                return RadiantFinale;
-                            if (ActionReady(BattleVoice))
-                                return BattleVoice;
-                        }
-
-                        // Song PROC
-                        if (gauge.Song == Song.WANDERER)
-                        {
-                            if (gauge.Repertoire == 3)
-                                return OriginalHook(WanderersMinuet);
-                            if (gauge.Repertoire == 2 && GetCooldownRemainingTime(EmpyrealArrow) < 2)
-                                return OriginalHook(WanderersMinuet);
-                            if (gauge.Repertoire > 0 && gauge.SongTimer / 1000 < 3)
-                                return OriginalHook(WanderersMinuet);
-                        }
-
-                        if (ActionReady(EmpyrealArrow))
-                            return EmpyrealArrow;
-
-                        // Bloodletter Overflow
-                        if (ActionReady(Bloodletter))
-                        {
-                            ushort charges = GetRemainingCharges(Bloodletter);
-                            ushort fullCharges = LocalPlayer.Level >= 84 ? (ushort)3 : (ushort)2;
-                            float nextChargeTime = gauge.Song == Song.MAGE ? 7.5f : 0f;
-                            if (charges == fullCharges)
-                                return Bloodletter;
-                            if (fullCharges - charges == 1 && GetCooldownRemainingTime(Bloodletter) < (nextChargeTime + 2.5f))
-                                return Bloodletter;
-                        }
-
-                        if (ActionReady(Barrage) && !HasEffect(Buffs.StraightShotReady) && fullPower)
-                            return Barrage;
-                        if (ActionReady(Sidewinder) && (fullPower || farFromFullPower))
-                            return Sidewinder;
-                        if (ActionReady(Bloodletter) && (fullPower || farFromFullPower))
-                            return Bloodletter;
-
-                        // Pitch Perfect at the end of fullPower
-                        if (gauge.Song == Song.WANDERER && gauge.Repertoire > 0 && EndOfFullPower(1))
-                           return OriginalHook(WanderersMinuet);
-                    }
-                    #endregion
-
-                    #region GCD
-                    // DOT
-                    if (GetTargetHPPercent() > 2)
-                    {
-                        if (LocalPlayer.Level >= 64)
-                        {
-                            bool stormbite = TargetHasEffect(Debuffs.Stormbite);
-                            bool caustic = TargetHasEffect(Debuffs.CausticBite);
-                            float stormRemaining = GetDebuffRemainingTime(Debuffs.Stormbite);
-                            float causticRemaining = GetDebuffRemainingTime(Debuffs.CausticBite);
-                            if (!stormbite)
-                                return Stormbite;
-                            if (!caustic)
-                                return CausticBite;
-                            if (ActionReady(IronJaws) && (stormRemaining < 4 || causticRemaining < 4))
-                                return IronJaws;
-                        }
-                        else
-                        {
-                            bool venomous = TargetHasEffect(Debuffs.VenomousBite);
-                            bool windbite = TargetHasEffect(Debuffs.Windbite);
-                            float venomRemaining = GetDebuffRemainingTime(Debuffs.VenomousBite);
-                            float windRemaining = GetDebuffRemainingTime(Debuffs.Windbite);
-                            if (!venomous)
-                                return VenomousBite;
-                            if (!windbite)
-                                return Windbite;
-                            if (ActionReady(IronJaws) && (venomRemaining < 4 || windRemaining < 4))
-                                return IronJaws;
-                        }
-                    }
-
-                    // Apex Arrow
-                    if (gauge.SoulVoice == 100 && fullPower)
-                        return ApexArrow;
-                    if (gauge.SoulVoice >= 80 && EndOfFullPower(5f))
-                        return ApexArrow;
-                    if (gauge.SoulVoice == 100 && GetCooldownRemainingTime(RagingStrikes) is >= 52 and < 100)
-                        return ApexArrow;
-                    if (gauge.SoulVoice >= 80 && GetCooldownRemainingTime(RagingStrikes) is > 45 and < 52)
-                        return ApexArrow;
-
-                    if (HasEffect(Buffs.BlastArrowReady))
-                        return BlastArrow;
-                    if (HasEffect(Buffs.StraightShotReady))
-                        return OriginalHook(StraightShot);
-
-                    if (LevelChecked(BurstShot))
-                        return BurstShot;
-                    return HeavyShot;
-                    #endregion
-                }
+                if (actionID is FootGraze)
+                    return CalculatePerfectSkill(true, true);
+                if (actionID is LegGraze)
+                    return CalculatePerfectSkill(true, false);
+                if (actionID is Shadowbite)
+                    return CalculatePerfectSkill(false, false);
                 return actionID;
             }
         }
