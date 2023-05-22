@@ -871,7 +871,7 @@ namespace XIVSlothCombo.Combos.PvE
         {
             protected internal override CustomComboPreset Preset { get; } = CustomComboPreset.BRD_Perfect_Mode;
 
-            protected uint CalculatePerfectSkill(bool singleTarget, bool dot, bool endingSong)
+            protected static uint CalculatePerfectSkill(bool singleTarget, bool dot, bool endingSong)
             {
                 #region Initial Values
                 uint heavyShot = singleTarget ? HeavyShot : QuickNock;
@@ -884,7 +884,7 @@ namespace XIVSlothCombo.Combos.PvE
 
                 float timeUntilFullPower = HasEffect(Buffs.ArmysMuse) ? 3.2f : 3f;
                 bool fullPower = endingSong || HasEffect(Buffs.RagingStrikes) && GetBuffRemainingTime(Buffs.RagingStrikes) <= (20f - timeUntilFullPower);
-                bool farFromFullPower = GetCooldownRemainingTime(RagingStrikes) is > 40 and < 100;
+                bool farFromFullPower = GetCooldownRemainingTime(RagingStrikes) is > 40 and < 105;
 
                 static bool EndOfFullPower(float time)
                 {
@@ -898,7 +898,7 @@ namespace XIVSlothCombo.Combos.PvE
                 if (CanWeave(HeavyShot, 0.7))
                 {
                     // Song helper
-                    if (gauge.Song == Song.NONE)
+                    if (gauge.Song == Song.NONE || gauge.SongTimer / 1000 < 1)
                     {
                         if (ActionReady(WanderersMinuet))
                             return WanderersMinuet;
@@ -932,7 +932,7 @@ namespace XIVSlothCombo.Combos.PvE
                         return EmpyrealArrow;
 
                     // Bloodletter Overflow
-                    if (ActionReady(bloodLetter))
+                    if (LevelChecked(bloodLetter))
                     {
                         ushort charges = GetRemainingCharges(bloodLetter);
                         ushort fullCharges = LocalPlayer.Level >= 84 ? (ushort)3 : (ushort)2;
@@ -958,7 +958,7 @@ namespace XIVSlothCombo.Combos.PvE
 
                 #region GCD
                 // DOT
-                if (dot && GetTargetHPPercent() > 2)
+                if (dot && (!HasTarget() || GetTargetHPPercent() > 2))
                 {
                     if (LocalPlayer.Level >= 64)
                     {
@@ -966,12 +966,19 @@ namespace XIVSlothCombo.Combos.PvE
                         bool caustic = TargetHasEffect(Debuffs.CausticBite);
                         float stormRemaining = GetDebuffRemainingTime(Debuffs.Stormbite);
                         float causticRemaining = GetDebuffRemainingTime(Debuffs.CausticBite);
+                        if (!HasTarget())
+                            return Stormbite;
                         if (!stormbite)
                             return Stormbite;
                         if (!caustic)
                             return CausticBite;
-                        if (LevelChecked(IronJaws) && (stormRemaining < 4 || causticRemaining < 4 || EndOfFullPower(3f)))
-                            return IronJaws;
+                        if (LevelChecked(IronJaws))
+                        {
+                            if (stormRemaining < 4 || causticRemaining < 4)
+                                return IronJaws;
+                            if (stormRemaining < 35 && causticRemaining < 35 && EndOfFullPower(3f))
+                                return IronJaws;
+                        }
                     }
                     else
                     {
@@ -979,12 +986,19 @@ namespace XIVSlothCombo.Combos.PvE
                         bool windbite = TargetHasEffect(Debuffs.Windbite);
                         float venomRemaining = GetDebuffRemainingTime(Debuffs.VenomousBite);
                         float windRemaining = GetDebuffRemainingTime(Debuffs.Windbite);
+                        if (!HasTarget())
+                            return VenomousBite;
                         if (!venomous)
                             return VenomousBite;
                         if (!windbite)
                             return Windbite;
-                        if (LevelChecked(IronJaws) && (venomRemaining < 4 || windRemaining < 4 || EndOfFullPower(3f)))
-                            return IronJaws;
+                        if (LevelChecked(IronJaws))
+                        {
+                            if (venomRemaining < 4 || windRemaining < 4)
+                                return IronJaws;
+                            if (venomRemaining < 35 && windRemaining < 35 && EndOfFullPower(3f))
+                                return IronJaws;
+                        }
                     }
                 }
 
@@ -993,7 +1007,7 @@ namespace XIVSlothCombo.Combos.PvE
                     return ApexArrow;
                 if (gauge.SoulVoice >= 80 && EndOfFullPower(8f))
                     return ApexArrow;
-                if (gauge.SoulVoice == 100 && GetCooldownRemainingTime(RagingStrikes) is >= 52 and < 100)
+                if (gauge.SoulVoice == 100 && GetCooldownRemainingTime(RagingStrikes) is >= 52 and < 105)
                     return ApexArrow;
                 if (gauge.SoulVoice >= 80 && GetCooldownRemainingTime(RagingStrikes) is > 45 and < 52)
                     return ApexArrow;
