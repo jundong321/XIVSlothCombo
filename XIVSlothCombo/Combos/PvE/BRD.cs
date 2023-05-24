@@ -871,7 +871,7 @@ namespace XIVSlothCombo.Combos.PvE
         {
             protected internal override CustomComboPreset Preset { get; } = CustomComboPreset.BRD_Perfect_Mode;
 
-            protected static uint CalculatePerfectSkill(bool singleTarget, bool dot, bool endingSong)
+            protected static uint CalculatePerfectSkill(bool singleTarget, bool dot, bool fullPower)
             {
                 #region Initial Values
                 uint heavyShot = singleTarget ? HeavyShot : QuickNock;
@@ -882,9 +882,13 @@ namespace XIVSlothCombo.Combos.PvE
                 #region Status
                 BRDGauge? gauge = GetJobGauge<BRDGauge>();
 
-                float timeUntilFullPower = HasEffect(Buffs.ArmysMuse) ? 3.2f : 3f;
-                bool fullPower = endingSong || HasEffect(Buffs.RagingStrikes) && GetBuffRemainingTime(Buffs.RagingStrikes) <= (20f - timeUntilFullPower);
-                bool farFromFullPower = GetCooldownRemainingTime(RagingStrikes) is > 40 and < 105;
+                float timeUntilFullPower = HasEffect(Buffs.ArmysMuse) ? 3.0f : 2.8f;
+                fullPower = fullPower || HasEffect(Buffs.RagingStrikes) && GetBuffRemainingTime(Buffs.RagingStrikes) <= (20f - timeUntilFullPower);
+
+                static bool farFromFullPower(float time)
+                {
+                    return GetCooldownRemainingTime(RagingStrikes) < 105 && GetCooldownRemainingTime(RagingStrikes) > time;
+                }
 
                 static bool EndOfFullPower(float time)
                 {
@@ -898,7 +902,7 @@ namespace XIVSlothCombo.Combos.PvE
                 if (CanWeave(HeavyShot, 0.7))
                 {
                     // Song helper
-                    if (gauge.Song == Song.NONE || gauge.SongTimer / 1000 < 1)
+                    if (gauge.Song == Song.NONE || gauge.SongTimer / 1000 < 2)
                     {
                         if (ActionReady(WanderersMinuet))
                             return WanderersMinuet;
@@ -945,9 +949,9 @@ namespace XIVSlothCombo.Combos.PvE
 
                     if (ActionReady(Barrage) && !HasEffect(Buffs.StraightShotReady) && fullPower)
                         return Barrage;
-                    if (ActionReady(Sidewinder) && (fullPower || farFromFullPower))
+                    if (ActionReady(Sidewinder) && (fullPower || farFromFullPower(40)))
                         return Sidewinder;
-                    if (ActionReady(bloodLetter) && (fullPower || farFromFullPower))
+                    if (ActionReady(bloodLetter) && (fullPower || farFromFullPower(45)))
                         return bloodLetter;
 
                     // Pitch Perfect at the end of fullPower
@@ -976,7 +980,7 @@ namespace XIVSlothCombo.Combos.PvE
                         {
                             if (stormRemaining < 4 || causticRemaining < 4)
                                 return IronJaws;
-                            if (stormRemaining < 35 && causticRemaining < 35 && EndOfFullPower(3f))
+                            if (stormRemaining < 30 && causticRemaining < 30 && EndOfFullPower(3f))
                                 return IronJaws;
                         }
                     }
@@ -996,7 +1000,7 @@ namespace XIVSlothCombo.Combos.PvE
                         {
                             if (venomRemaining < 4 || windRemaining < 4)
                                 return IronJaws;
-                            if (venomRemaining < 35 && windRemaining < 35 && EndOfFullPower(3f))
+                            if (venomRemaining < 30 && windRemaining < 30 && EndOfFullPower(3f))
                                 return IronJaws;
                         }
                     }
@@ -1016,6 +1020,8 @@ namespace XIVSlothCombo.Combos.PvE
                     return BlastArrow;
                 if (HasEffect(Buffs.StraightShotReady) && singleTarget)
                     return OriginalHook(StraightShot);
+                if (HasEffect(Buffs.ShadowbiteReady) && !singleTarget)
+                    return Shadowbite;
 
                 if (LevelChecked(burstShot))
                     return burstShot;
