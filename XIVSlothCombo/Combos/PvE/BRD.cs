@@ -871,7 +871,7 @@ namespace XIVSlothCombo.Combos.PvE
         {
             protected internal override CustomComboPreset Preset { get; } = CustomComboPreset.BRD_Perfect_Mode;
 
-            protected static uint CalculatePerfectSkill(bool singleTarget, bool dot, bool fullPower)
+            protected static uint CalculatePerfectSkill(bool singleTarget, bool dot, bool fullPower = false, bool perfectSong = false)
             {
                 #region Initial Values
                 uint heavyShot = singleTarget ? HeavyShot : QuickNock;
@@ -882,7 +882,7 @@ namespace XIVSlothCombo.Combos.PvE
                 #region Status
                 BRDGauge? gauge = GetJobGauge<BRDGauge>();
 
-                float timeUntilFullPower = HasEffect(Buffs.ArmysMuse) ? 3.0f : 2.8f;
+                float timeUntilFullPower = HasEffect(Buffs.ArmysMuse) ? 2.5f : 2.7f;
                 fullPower = fullPower || HasEffect(Buffs.RagingStrikes) && GetBuffRemainingTime(Buffs.RagingStrikes) <= (20f - timeUntilFullPower);
 
                 static bool farFromFullPower(float time)
@@ -899,10 +899,17 @@ namespace XIVSlothCombo.Combos.PvE
                 #endregion
 
                 #region Weaves
-                if (CanWeave(HeavyShot, 0.7))
+                if (CanWeave(HeavyShot, 0.6))
                 {
-                    // Song helper
-                    if (gauge.Song == Song.NONE || gauge.SongTimer / 1000 < 2)
+                    // Songs
+                    if (perfectSong)
+                    {
+                        if (gauge.Song == Song.WANDERER && gauge.Repertoire == 0 && gauge.SongTimer / 1000 < 3 && ActionReady(MagesBallad))
+                            return MagesBallad;
+                        if (gauge.Song == Song.MAGE && gauge.SongTimer / 1000 < 12 && ActionReady(ArmysPaeon))
+                            return ArmysPaeon;
+                    }
+                    if (gauge.Song == Song.NONE || gauge.SongTimer / 1000 < 1)
                     {
                         if (ActionReady(WanderersMinuet))
                             return WanderersMinuet;
@@ -943,7 +950,7 @@ namespace XIVSlothCombo.Combos.PvE
                         float nextChargeTime = gauge.Song == Song.MAGE ? 7.5f : 0f;
                         if (charges == fullCharges)
                             return bloodLetter;
-                        if (fullCharges - charges == 1 && GetCooldownRemainingTime(bloodLetter) < (nextChargeTime + 2.5f))
+                        if (fullCharges - charges == 1 && GetCooldownRemainingTime(bloodLetter) < (nextChargeTime + 5f))
                             return bloodLetter;
                     }
 
@@ -978,7 +985,7 @@ namespace XIVSlothCombo.Combos.PvE
                             return CausticBite;
                         if (LevelChecked(IronJaws))
                         {
-                            if (stormRemaining < 4 || causticRemaining < 4)
+                            if (stormRemaining < 3 || causticRemaining < 3)
                                 return IronJaws;
                             if (stormRemaining < 30 && causticRemaining < 30 && EndOfFullPower(3f))
                                 return IronJaws;
@@ -998,7 +1005,7 @@ namespace XIVSlothCombo.Combos.PvE
                             return Windbite;
                         if (LevelChecked(IronJaws))
                         {
-                            if (venomRemaining < 4 || windRemaining < 4)
+                            if (venomRemaining < 3 || windRemaining < 3)
                                 return IronJaws;
                             if (venomRemaining < 30 && windRemaining < 30 && EndOfFullPower(3f))
                                 return IronJaws;
@@ -1032,13 +1039,13 @@ namespace XIVSlothCombo.Combos.PvE
             protected override uint Invoke(uint actionID, uint lastComboActionID, float comboTime, byte level)
             {
                 if (actionID is FootGraze)
-                    return CalculatePerfectSkill(true, true, false);
+                    return CalculatePerfectSkill(true, true, false, true);
                 if (actionID is LegGraze)
-                    return CalculatePerfectSkill(true, false, true);
+                    return CalculatePerfectSkill(true, false, true, true);
                 if (actionID is HeadGraze)
-                    return CalculatePerfectSkill(true, false, false);
+                    return CalculatePerfectSkill(true, false);
                 if (actionID is Shadowbite)
-                    return CalculatePerfectSkill(false, false, false);
+                    return CalculatePerfectSkill(false, false);
                 return actionID;
             }
         }
