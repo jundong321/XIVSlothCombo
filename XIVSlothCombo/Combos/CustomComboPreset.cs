@@ -700,7 +700,7 @@ namespace XIVSlothCombo.Combos
 
         [ReplaceSkill(BRD.FootGraze, BRD.LegGraze, BRD.HeadGraze, BRD.Shadowbite)]
         //TODO: fix the conflicting combos and naming
-        [CustomComboInfo("Perfect Mode", "", BRD.JobID)]
+        [CustomComboInfo("Perfect Mode", "The perfect rotation for you.", BRD.JobID)]
         BRD_Perfect_Mode = 3032,
 
         // Last value = 3032

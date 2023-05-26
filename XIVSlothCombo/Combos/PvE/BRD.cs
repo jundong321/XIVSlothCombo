@@ -882,8 +882,9 @@ namespace XIVSlothCombo.Combos.PvE
                 #region Status
                 BRDGauge? gauge = GetJobGauge<BRDGauge>();
 
-                float timeUntilFullPower = HasEffect(Buffs.ArmysMuse) ? 2.5f : 2.7f;
-                fullPower = fullPower || HasEffect(Buffs.RagingStrikes) && GetBuffRemainingTime(Buffs.RagingStrikes) <= (20f - timeUntilFullPower);
+                float timeUntilFullPower = HasEffect(Buffs.ArmysMuse) ? 2.6f : 2.7f;
+                bool readyForFullPower = HasEffect(Buffs.RagingStrikes) && GetBuffRemainingTime(Buffs.RagingStrikes) < (20f - timeUntilFullPower);
+                fullPower = fullPower || HasEffect(Buffs.BattleVoice);
 
                 static bool farFromFullPower(float time)
                 {
@@ -892,8 +893,6 @@ namespace XIVSlothCombo.Combos.PvE
 
                 static bool EndOfFullPower(float time)
                 {
-                    if (LevelChecked(RadiantFinale))
-                        return HasEffect(Buffs.RadiantFinale) && GetBuffRemainingTime(Buffs.RadiantFinale) < time;
                     return HasEffect(Buffs.BattleVoice) && GetBuffRemainingTime(Buffs.BattleVoice) < time;
                 }
                 #endregion
@@ -920,13 +919,16 @@ namespace XIVSlothCombo.Combos.PvE
                     }
 
                     // Buffs
-                    if (fullPower)
+                    if (readyForFullPower || fullPower)
                     {
-                        if (ActionReady(RadiantFinale))
-                            return RadiantFinale;
                         if (ActionReady(BattleVoice))
                             return BattleVoice;
+                        if (ActionReady(RadiantFinale))
+                            return RadiantFinale;
                     }
+
+                    if (LevelChecked(EmpyrealArrow) && GetCooldownRemainingTime(EmpyrealArrow) < 0.3)
+                        return EmpyrealArrow;
 
                     // Song PROC
                     if (gauge.Song == Song.WANDERER)
@@ -939,12 +941,16 @@ namespace XIVSlothCombo.Combos.PvE
                             return OriginalHook(WanderersMinuet);
                     }
 
-                    if (ActionReady(EmpyrealArrow))
-                        return EmpyrealArrow;
+                    if (ActionReady(Barrage) && !HasEffect(Buffs.StraightShotReady) && fullPower)
+                        return Barrage;
+                    if (ActionReady(Sidewinder) && (fullPower || farFromFullPower(40)))
+                        return Sidewinder;
 
-                    // Bloodletter Overflow
-                    if (LevelChecked(bloodLetter))
+                    // Bloodletter
+                    if (ActionReady(bloodLetter) && GetCooldownRemainingTime(EmpyrealArrow) > 2.5f)
                     {
+                        if (fullPower || farFromFullPower(45))
+                            return bloodLetter;
                         ushort charges = GetRemainingCharges(bloodLetter);
                         ushort fullCharges = LocalPlayer.Level >= 84 ? (ushort)3 : (ushort)2;
                         float nextChargeTime = gauge.Song == Song.MAGE ? 7.5f : 0f;
@@ -953,13 +959,6 @@ namespace XIVSlothCombo.Combos.PvE
                         if (fullCharges - charges == 1 && GetCooldownRemainingTime(bloodLetter) < (nextChargeTime + 5f))
                             return bloodLetter;
                     }
-
-                    if (ActionReady(Barrage) && !HasEffect(Buffs.StraightShotReady) && fullPower)
-                        return Barrage;
-                    if (ActionReady(Sidewinder) && (fullPower || farFromFullPower(40)))
-                        return Sidewinder;
-                    if (ActionReady(bloodLetter) && (fullPower || farFromFullPower(45)))
-                        return bloodLetter;
 
                     // Pitch Perfect at the end of fullPower
                     if (gauge.Song == Song.WANDERER && gauge.Repertoire > 0 && EndOfFullPower(1))
@@ -987,8 +986,15 @@ namespace XIVSlothCombo.Combos.PvE
                         {
                             if (stormRemaining < 3 || causticRemaining < 3)
                                 return IronJaws;
-                            if (stormRemaining < 30 && causticRemaining < 30 && EndOfFullPower(3f))
+                            if ((stormRemaining < 5 || causticRemaining < 5) && gauge.Song == Song.ARMY && !HasEffect(Buffs.StraightShotReady))
                                 return IronJaws;
+                            if (stormRemaining < 30 || causticRemaining < 30)
+                            {
+                                if (EndOfFullPower(3f))
+                                    return IronJaws;
+                                if (EndOfFullPower(5.5f) && !HasEffect(Buffs.StraightShotReady))
+                                    return IronJaws;
+                            }
                         }
                     }
                     else
@@ -1007,8 +1013,15 @@ namespace XIVSlothCombo.Combos.PvE
                         {
                             if (venomRemaining < 3 || windRemaining < 3)
                                 return IronJaws;
-                            if (venomRemaining < 30 && windRemaining < 30 && EndOfFullPower(3f))
+                            if ((venomRemaining < 5 || windRemaining < 5) && gauge.Song == Song.ARMY && !HasEffect(Buffs.StraightShotReady))
                                 return IronJaws;
+                            if (venomRemaining < 30 || windRemaining < 30)
+                            {
+                                if (EndOfFullPower(3f))
+                                    return IronJaws;
+                                if (EndOfFullPower(5.5f) && !HasEffect(Buffs.StraightShotReady))
+                                    return IronJaws;
+                            }
                         }
                     }
                 }
