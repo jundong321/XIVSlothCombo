@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using Dalamud.Game.ClientState.JobGauge.Enums;
 using Dalamud.Game.ClientState.JobGauge.Types;
 using Dalamud.Game.ClientState.Statuses;
@@ -882,18 +883,21 @@ namespace XIVSlothCombo.Combos.PvE
                 #region Status
                 BRDGauge? gauge = GetJobGauge<BRDGauge>();
 
-                float timeUntilFullPower = HasEffect(Buffs.ArmysMuse) ? 2.6f : 2.7f;
-                bool readyForFullPower = HasEffect(Buffs.RagingStrikes) && GetBuffRemainingTime(Buffs.RagingStrikes) < (20f - timeUntilFullPower);
-                fullPower = fullPower || HasEffect(Buffs.BattleVoice);
-
-                static bool farFromFullPower(float time)
+                bool readyForFullPower = HasEffect(Buffs.RagingStrikes) && GetBuffRemainingTime(Buffs.RagingStrikes) < (20f - 2.6f);
+                fullPower = fullPower || (LevelChecked(RadiantFinale) ? HasEffect(Buffs.BattleVoice) && HasEffect(Buffs.RadiantFinale) : HasEffect(Buffs.BattleVoice));
+                bool farFromFullPower = GetCooldownRemainingTime(RagingStrikes) is > 40f and < 105f;
+  
+                static bool fullPowerExpiring(float time)
                 {
-                    return GetCooldownRemainingTime(RagingStrikes) < 105 && GetCooldownRemainingTime(RagingStrikes) > time;
-                }
-
-                static bool EndOfFullPower(float time)
-                {
-                    return HasEffect(Buffs.BattleVoice) && GetBuffRemainingTime(Buffs.BattleVoice) < time;
+                    if (LevelChecked(RadiantFinale))
+                    {
+                        if (HasEffect(Buffs.BattleVoice) && HasEffect(Buffs.RadiantFinale))
+                            return Math.Min(GetBuffRemainingTime(Buffs.BattleVoice), GetBuffRemainingTime(Buffs.RadiantFinale)) < time;
+                        return false;
+                    }
+                    if (HasEffect(Buffs.BattleVoice))
+                        return GetBuffRemainingTime(Buffs.BattleVoice) < time;
+                    return false;
                 }
                 #endregion
 
@@ -921,6 +925,8 @@ namespace XIVSlothCombo.Combos.PvE
                     // Buffs
                     if (readyForFullPower || fullPower)
                     {
+                        if (ActionReady(RadiantFinale) && gauge.Coda.Count(s => s != Song.NONE) < 3)
+                            return RadiantFinale;
                         if (ActionReady(BattleVoice))
                             return BattleVoice;
                         if (ActionReady(RadiantFinale))
@@ -943,17 +949,17 @@ namespace XIVSlothCombo.Combos.PvE
 
                     if (ActionReady(Barrage) && !HasEffect(Buffs.StraightShotReady) && fullPower)
                         return Barrage;
-                    if (ActionReady(Sidewinder) && (fullPower || farFromFullPower(40)))
+                    if (ActionReady(Sidewinder) && (fullPower || farFromFullPower))
                         return Sidewinder;
 
                     // Bloodletter
                     if (ActionReady(bloodLetter) && GetCooldownRemainingTime(EmpyrealArrow) > 2.5f)
                     {
-                        if (fullPower || farFromFullPower(45))
+                        if (fullPower || farFromFullPower)
                             return bloodLetter;
                         ushort charges = GetRemainingCharges(bloodLetter);
                         ushort fullCharges = LocalPlayer.Level >= 84 ? (ushort)3 : (ushort)2;
-                        float nextChargeTime = gauge.Song == Song.MAGE ? 7.5f : 0f;
+                        float nextChargeTime = (gauge.Song == Song.MAGE) ? 7.5f : 0f;
                         if (charges == fullCharges)
                             return bloodLetter;
                         if (fullCharges - charges == 1 && GetCooldownRemainingTime(bloodLetter) < (nextChargeTime + 5f))
@@ -961,7 +967,7 @@ namespace XIVSlothCombo.Combos.PvE
                     }
 
                     // Pitch Perfect at the end of fullPower
-                    if (gauge.Song == Song.WANDERER && gauge.Repertoire > 0 && EndOfFullPower(1))
+                    if (gauge.Song == Song.WANDERER && gauge.Repertoire > 0 && fullPowerExpiring(1f))
                        return OriginalHook(WanderersMinuet);
                 }
                 #endregion
@@ -970,66 +976,34 @@ namespace XIVSlothCombo.Combos.PvE
                 // DOT
                 if (dot && (!HasTarget() || GetTargetHPPercent() > 2))
                 {
-                    if (LocalPlayer.Level >= 64)
+                    uint stormbite = LevelChecked(Stormbite) ? Stormbite : VenomousBite;
+                    uint caustic = LevelChecked(CausticBite) ? CausticBite : Windbite;
+                    ushort stormbiteDebuff = LevelChecked(Stormbite) ? Debuffs.Stormbite : Debuffs.VenomousBite;
+                    ushort causticDebuff = LevelChecked(CausticBite) ? Debuffs.CausticBite : Debuffs.Windbite;
+                    if (!HasTarget())
+                        return stormbite;
+                    if (!TargetHasEffect(stormbiteDebuff))
+                        return stormbite;
+                    if (!TargetHasEffect(causticDebuff))
+                        return caustic;
+                    if (LevelChecked(IronJaws))
                     {
-                        bool stormbite = TargetHasEffect(Debuffs.Stormbite);
-                        bool caustic = TargetHasEffect(Debuffs.CausticBite);
-                        float stormRemaining = GetDebuffRemainingTime(Debuffs.Stormbite);
-                        float causticRemaining = GetDebuffRemainingTime(Debuffs.CausticBite);
-                        if (!HasTarget())
-                            return Stormbite;
-                        if (!stormbite)
-                            return Stormbite;
-                        if (!caustic)
-                            return CausticBite;
-                        if (LevelChecked(IronJaws))
-                        {
-                            if (stormRemaining < 3 || causticRemaining < 3)
-                                return IronJaws;
-                            if ((stormRemaining < 5 || causticRemaining < 5) && gauge.Song == Song.ARMY && !HasEffect(Buffs.StraightShotReady))
-                                return IronJaws;
-                            if (stormRemaining < 30 || causticRemaining < 30)
-                            {
-                                if (EndOfFullPower(3f))
-                                    return IronJaws;
-                                if (EndOfFullPower(5.5f) && !HasEffect(Buffs.StraightShotReady))
-                                    return IronJaws;
-                            }
-                        }
-                    }
-                    else
-                    {
-                        bool venomous = TargetHasEffect(Debuffs.VenomousBite);
-                        bool windbite = TargetHasEffect(Debuffs.Windbite);
-                        float venomRemaining = GetDebuffRemainingTime(Debuffs.VenomousBite);
-                        float windRemaining = GetDebuffRemainingTime(Debuffs.Windbite);
-                        if (!HasTarget())
-                            return VenomousBite;
-                        if (!venomous)
-                            return VenomousBite;
-                        if (!windbite)
-                            return Windbite;
-                        if (LevelChecked(IronJaws))
-                        {
-                            if (venomRemaining < 3 || windRemaining < 3)
-                                return IronJaws;
-                            if ((venomRemaining < 5 || windRemaining < 5) && gauge.Song == Song.ARMY && !HasEffect(Buffs.StraightShotReady))
-                                return IronJaws;
-                            if (venomRemaining < 30 || windRemaining < 30)
-                            {
-                                if (EndOfFullPower(3f))
-                                    return IronJaws;
-                                if (EndOfFullPower(5.5f) && !HasEffect(Buffs.StraightShotReady))
-                                    return IronJaws;
-                            }
-                        }
+                        float dotRemaining = Math.Min(GetDebuffRemainingTime(stormbiteDebuff), GetDebuffRemainingTime(causticDebuff));
+                        if (dotRemaining < 3)
+                            return IronJaws;
+                        if (gauge.Song == Song.ARMY && !HasEffect(Buffs.StraightShotReady) && dotRemaining < 5.5f)
+                            return IronJaws;
+                        if (fullPowerExpiring(3f) && dotRemaining < 30f)
+                            return IronJaws;
+                        if (fullPowerExpiring(5.5f) && !HasEffect(Buffs.StraightShotReady) && dotRemaining < 30f)
+                            return IronJaws;
                     }
                 }
 
                 // Apex Arrow
                 if (gauge.SoulVoice == 100 && fullPower)
                     return ApexArrow;
-                if (gauge.SoulVoice >= 80 && EndOfFullPower(8f))
+                if (gauge.SoulVoice >= 80 && fullPowerExpiring(8f))
                     return ApexArrow;
                 if (gauge.SoulVoice == 100 && GetCooldownRemainingTime(RagingStrikes) is >= 52 and < 105)
                     return ApexArrow;
