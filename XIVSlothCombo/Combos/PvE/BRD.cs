@@ -947,22 +947,21 @@ namespace XIVSlothCombo.Combos.PvE
                             return OriginalHook(WanderersMinuet);
                     }
 
+                    ushort bloodLetterCharges = GetRemainingCharges(bloodLetter);
+                    ushort bloodLetterFullCharges = LocalPlayer.Level >= 84 ? (ushort)3 : (ushort)2;
+                    bool waitForEmpyrealArrow = LevelChecked(EmpyrealArrow) && GetCooldownRemainingTime(EmpyrealArrow) < 1.5f;
+                    if (ActionReady(bloodLetter) && bloodLetterCharges == bloodLetterFullCharges && !waitForEmpyrealArrow)
+                        return bloodLetter;
                     if (ActionReady(Barrage) && !HasEffect(Buffs.StraightShotReady) && fullPower)
                         return Barrage;
                     if (ActionReady(Sidewinder) && (fullPower || farFromFullPower))
                         return Sidewinder;
-
-                    // Bloodletter
-                    if (ActionReady(bloodLetter) && GetCooldownRemainingTime(EmpyrealArrow) > 2.5f)
+                    if (ActionReady(bloodLetter) && !waitForEmpyrealArrow)
                     {
                         if (fullPower || farFromFullPower)
                             return bloodLetter;
-                        ushort charges = GetRemainingCharges(bloodLetter);
-                        ushort fullCharges = LocalPlayer.Level >= 84 ? (ushort)3 : (ushort)2;
                         float nextChargeTime = (gauge.Song == Song.MAGE) ? 7.5f : 0f;
-                        if (charges == fullCharges)
-                            return bloodLetter;
-                        if (fullCharges - charges == 1 && GetCooldownRemainingTime(bloodLetter) < (nextChargeTime + 5f))
+                        if (bloodLetterFullCharges - bloodLetterCharges == 1 && GetCooldownRemainingTime(bloodLetter) < (nextChargeTime + 2f))
                             return bloodLetter;
                     }
 
@@ -1003,13 +1002,15 @@ namespace XIVSlothCombo.Combos.PvE
                 // Apex Arrow
                 if (gauge.SoulVoice == 100 && fullPower)
                     return ApexArrow;
-                if (gauge.SoulVoice >= 80 && fullPowerExpiring(8f))
+                if (gauge.SoulVoice >= 80 && fullPowerExpiring(10.5f))
                     return ApexArrow;
-                if (gauge.SoulVoice == 100 && GetCooldownRemainingTime(RagingStrikes) is >= 52 and < 105)
+                if (gauge.SoulVoice == 100 && GetCooldownRemainingTime(RagingStrikes) is >= 53 and < 105)
                     return ApexArrow;
-                if (gauge.SoulVoice >= 80 && GetCooldownRemainingTime(RagingStrikes) is > 45 and < 52)
+                if (gauge.SoulVoice >= 80 && GetCooldownRemainingTime(RagingStrikes) is > 50 and < 53)
                     return ApexArrow;
 
+                if (HasEffect(Buffs.StraightShotReady) && singleTarget && (IsOffCooldown(Barrage) || HasEffect(Buffs.Barrage)))
+                    return OriginalHook(StraightShot);
                 if (HasEffect(Buffs.BlastArrowReady))
                     return BlastArrow;
                 if (HasEffect(Buffs.StraightShotReady) && singleTarget)
