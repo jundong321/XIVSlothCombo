@@ -23,9 +23,9 @@ namespace XIVSlothCombo.Core
         /// <inheritdoc/>
         protected unsafe override void Setup64Bit(SigScanner scanner)
         {
-            ComboTimer = new nint(&ActionManager.Instance()->Combo.Timer);
+            ComboTimer = new IntPtr(&ActionManager.Instance()->Combo.Timer);
 
-            GetAdjustedActionId = scanner.ScanText("E8 ?? ?? ?? ?? 89 03 8B 03"); // Client::Game::ActionManager.GetAdjustedActionId
+            GetAdjustedActionId = scanner.ScanText("E8 ?? ?? ?? ?? 89 03 8B 03");  // Client::Game::ActionManager.GetAdjustedActionId
 
             IsActionIdReplaceable = scanner.ScanText("E8 ?? ?? ?? ?? 84 C0 74 4C 8B D3");
 
