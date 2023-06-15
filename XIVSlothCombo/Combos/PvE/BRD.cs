@@ -79,7 +79,9 @@ namespace XIVSlothCombo.Combos.PvE
                 BRD_NoWasteHPPercentage = "noWasteHpPercentage",
                 BRD_STSecondWindThreshold = "BRD_STSecondWindThreshold",
                 BRD_AoESecondWindThreshold = "BRD_AoESecondWindThreshold",
-                BRD_VariantCure = "BRD_VariantCure";
+                BRD_VariantCure = "BRD_VariantCure",
+                BRD_WM_RemainTime = "BRD_WB_RemainTime",
+                BRD_MB_RemainTime = "BRD_MB_RemainTime";
         }
 
         internal enum OpenerState
@@ -907,9 +909,13 @@ namespace XIVSlothCombo.Combos.PvE
                     // Songs
                     if (perfectSong)
                     {
-                        if (gauge.Song == Song.WANDERER && gauge.Repertoire == 0 && gauge.SongTimer / 1000 < 3 && ActionReady(MagesBallad))
+                        if (gauge.Song == Song.WANDERER && gauge.SongTimer / 1000 < GetOptionValue(Config.BRD_WM_RemainTime) && ActionReady(MagesBallad))
+                        {
+                            if (gauge.Repertoire > 0)
+                                return OriginalHook(WanderersMinuet);
                             return MagesBallad;
-                        if (gauge.Song == Song.MAGE && gauge.SongTimer / 1000 < 12 && ActionReady(ArmysPaeon))
+                        }
+                        if (gauge.Song == Song.MAGE && gauge.SongTimer / 1000 < GetOptionValue(Config.BRD_MB_RemainTime) && ActionReady(ArmysPaeon))
                             return ArmysPaeon;
                     }
                     if (gauge.Song == Song.NONE || gauge.SongTimer / 1000 < 1)

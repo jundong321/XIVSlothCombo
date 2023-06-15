@@ -1161,6 +1161,12 @@ namespace XIVSlothCombo.Window.Functions
             if (preset == CustomComboPreset.BRD_Variant_Cure)
                 UserConfig.DrawSliderInt(1, 100, BRD.Config.BRD_VariantCure, "HP% to be at or under", 200);
 
+            if (preset == CustomComboPreset.BRD_Perfect_Mode)
+                UserConfig.DrawSliderInt(0, 15, BRD.Config.BRD_WM_RemainTime, "Time in seconds remain to switch out of WM");
+
+            if (preset == CustomComboPreset.BRD_Perfect_Mode)
+                UserConfig.DrawSliderInt(0, 15, BRD.Config.BRD_MB_RemainTime, "Time in seconds remain to switch out of MB");
+
             #endregion
             // ====================================================================================
             #region DANCER
