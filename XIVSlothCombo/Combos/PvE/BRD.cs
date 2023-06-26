@@ -939,7 +939,7 @@ namespace XIVSlothCombo.Combos.PvE
                             return RadiantFinale;
                     }
 
-                    if (LevelChecked(EmpyrealArrow) && GetCooldownRemainingTime(EmpyrealArrow) < 0.3)
+                    if (LevelChecked(EmpyrealArrow) && GetCooldownRemainingTime(EmpyrealArrow) < 0.5)
                         return EmpyrealArrow;
 
                     // Song PROC
