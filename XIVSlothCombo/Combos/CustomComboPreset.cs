@@ -990,26 +990,11 @@ namespace XIVSlothCombo.Combos
         DNC_Variant_Cure = 4084,
         #endregion
 
-        #region Perfect Simple Mode
+        #region Perfect Perfect Mode
         [ReplaceSkill(DNC.Cascade)]
         //TODO: fix the conflicting combos and naming
-        [CustomComboInfo("Single Target Filling Mode", "Replace Cascade", DNC.JobID)]
-        DNC_ST_FillingMode = 4090,
-
-        [ReplaceSkill(DNC.FootGraze)]
-        //TODO: fix the conflicting combos and naming
-        [CustomComboInfo("Single Target Burst Mode", "Replace Foot Graze", DNC.JobID)]
-        DNC_ST_BurstMode = 4091,
-
-        [ReplaceSkill(DNC.Windmill)]
-        //TODO: fix the conflicting combos and naming
-        [CustomComboInfo("AOE Filling Mode", "Replace Windmill", DNC.JobID)]
-        DNC_AOE_FillingMode = 4092,
-
-        [ReplaceSkill(DNC.LegGraze)]
-        //TODO: fix the conflicting combos and naming
-        [CustomComboInfo("AOE Burst Mode", "Replace Leg Graze", DNC.JobID)]
-        DNC_AOE_BurstMode = 4093,
+        [CustomComboInfo("Dancer Perfect Mode", "Replace some", DNC.JobID)]
+        DNC_ST_PerfectMode = 4090,
         #endregion
 
         // Last value = 4093
