@@ -755,6 +755,7 @@ namespace XIVSlothCombo.Combos.PvE
             protected static uint CalculatePerfectSkill(uint lastComboMove, float comboTime, bool singleTarget = true, bool shikai = false, bool bankai = false, bool standardStep = false)
             {
                 #region Initial Values
+                shikai = bankai ? true : shikai;
                 uint cascade = singleTarget ? Cascade : Windmill;
                 uint fountain = singleTarget ? Fountain : Bladeshower;
                 uint reverseCascade = singleTarget ? ReverseCascade : RisingWindmill;
@@ -784,7 +785,7 @@ namespace XIVSlothCombo.Combos.PvE
                 }
 
                 // Technical step.
-                if (bankai && WeaponSkillWillReady(TechnicalStep, cascade))
+                if (WeaponSkillWillReady(TechnicalStep, cascade) && bankai)
                     return TechnicalStep;
                 #endregion
 
@@ -808,7 +809,7 @@ namespace XIVSlothCombo.Combos.PvE
                         return FanDance4;
 
                     // Flourish.
-                    if (ActionReady(Flourish) && InCombat())
+                    if (ActionReady(Flourish) && InCombat() && (shikai || GetCooldownRemainingTime(Devilment) > 50))
                         return Flourish;
 
                     // Fan Dance 1/2.
@@ -877,7 +878,7 @@ namespace XIVSlothCombo.Combos.PvE
 
             protected override uint Invoke(uint actionID, uint lastComboMove, float comboTime, byte level)
             {
-                if (actionID is Cascade)
+                if (actionID is HeadGraze)
                     return CalculatePerfectSkill(lastComboMove, comboTime, singleTarget: true, shikai: false, bankai: false, standardStep: true);
                 if (actionID is FanDance1)
                     return CalculatePerfectSkill(lastComboMove, comboTime, singleTarget: true, shikai: true, bankai: true, standardStep: false);
