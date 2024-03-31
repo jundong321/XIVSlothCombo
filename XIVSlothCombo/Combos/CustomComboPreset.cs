@@ -727,7 +727,12 @@ namespace XIVSlothCombo.Combos
         [CustomComboInfo("Cure Option", "Use Variant Cure when HP is below set threshold.", BRD.JobID)]
         BRD_Variant_Cure = 3031,
 
-        // Last value = 3031
+        [ReplaceSkill(BRD.FootGraze, BRD.LegGraze, BRD.HeadGraze, BRD.Shadowbite)]
+        //TODO: fix the conflicting combos and naming
+        [CustomComboInfo("Perfect Mode", "The perfect rotation for you.", BRD.JobID)]
+        BRD_Perfect_Mode = 3032,
+
+        // Last value = 3032
 
         #endregion
 
@@ -1012,11 +1017,16 @@ namespace XIVSlothCombo.Combos
         [VariantParent(DNC_ST_SimpleMode, DNC_AoE_SimpleMode)]
         [CustomComboInfo("Cure Option", "Use Variant Cure when HP is below set threshold.", DNC.JobID)]
         DNC_Variant_Cure = 4084,
-
-
         #endregion
 
-        // Last value = 4084
+        #region Perfect Perfect Mode
+        [ReplaceSkill(DNC.Cascade)]
+        //TODO: fix the conflicting combos and naming
+        [CustomComboInfo("Dancer Perfect Mode", "Replace some", DNC.JobID)]
+        DNC_ST_PerfectMode = 4090,
+        #endregion
+
+        // Last value = 4093
 
         #endregion
 

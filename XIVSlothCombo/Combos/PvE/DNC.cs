@@ -47,7 +47,10 @@ namespace XIVSlothCombo.Combos.PvE
             ShieldSamba = 16012,
             Flourish = 16013,
             Improvisation = 16014,
-            CuringWaltz = 16015;
+            CuringWaltz = 16015,
+            HeadGraze = 7551,
+            FootGraze = 7553,
+            LegGraze = 7554;
 
         public static class Buffs
         {
@@ -741,6 +744,153 @@ namespace XIVSlothCombo.Combos.PvE
                     #endregion
                 }
 
+                return actionID;
+            }
+        }
+
+        internal class DNC_ST_PerfectMode : CustomCombo
+        {
+            protected internal override CustomComboPreset Preset { get; } = CustomComboPreset.DNC_ST_PerfectMode;
+
+            protected static uint CalculatePerfectSkill(uint lastComboMove, float comboTime, bool singleTarget = true, bool shikai = false, bool bankai = false, bool standardStep = false)
+            {
+                #region Initial Values
+                shikai = bankai ? true : shikai;
+                uint cascade = singleTarget ? Cascade : Windmill;
+                uint fountain = singleTarget ? Fountain : Bladeshower;
+                uint reverseCascade = singleTarget ? ReverseCascade : RisingWindmill;
+                uint fountainFall = singleTarget ? Fountainfall : Bloodshower;
+                uint fanDance = singleTarget ? FanDance1 : FanDance2;
+                #endregion
+
+                #region Types
+                DNCGauge? gauge = GetJobGauge<DNCGauge>();
+                bool flow = HasEffect(Buffs.SilkenFlow) || HasEffect(Buffs.FlourishingFlow);
+                bool symmetry = HasEffect(Buffs.SilkenSymmetry) || HasEffect(Buffs.FlourishingSymmetry);
+                bool flowExpiring = AboutToExpire(Buffs.SilkenFlow) || AboutToExpire(Buffs.FlourishingFlow);
+                bool symmetryExpiring = AboutToExpire(Buffs.SilkenSymmetry) || AboutToExpire(Buffs.FlourishingSymmetry);
+                bool comboExpiring = (lastComboMove == cascade && comboTime < 3f);
+                standardStep = standardStep && WeaponSkillWillReady(StandardStep, cascade) && (!InCombat() || !HasBattleTarget() || !LevelChecked(Flourish) || GetCooldownRemainingTime(Flourish) > 5f);
+                #endregion
+
+                #region Dance
+                // Dance steps.
+                if (gauge.IsDancing)
+                {
+                    if (HasEffect(Buffs.StandardStep))
+                        return gauge.CompletedSteps < 2 ? gauge.NextStep : StandardFinish2;
+
+                    if (HasEffect(Buffs.TechnicalStep))
+                        return gauge.CompletedSteps < 4 ? gauge.NextStep : TechnicalFinish4;
+                }
+
+                // Technical step.
+                if (WeaponSkillWillReady(TechnicalStep, cascade) && bankai)
+                    return TechnicalStep;
+                #endregion
+
+                #region Weaves
+                if (CanWeave(cascade))
+                {
+                    // Devilment.
+                    if (ActionReady(Devilment) && bankai)
+                        return Devilment;
+
+                    // Fan Dance 3 if any.
+                    if (HasEffect(Buffs.ThreeFoldFanDance))
+                        return FanDance3;
+
+                    // Fan Dance 1 if Feather count > 3.
+                    if (gauge.Feathers > 3)
+                        return fanDance;
+
+                    // Fan Dance 4 if any.
+                    if (HasEffect(Buffs.FourFoldFanDance))
+                        return FanDance4;
+
+                    // Flourish.
+                    if (ActionReady(Flourish) && InCombat() && (shikai || GetCooldownRemainingTime(Devilment) > 50))
+                        return Flourish;
+
+                    // Fan Dance 1/2.
+                    if (gauge.Feathers > 0 && shikai)
+                        return fanDance;
+                }
+                #endregion
+
+                #region GCD
+                // Expiring Starfall Dance.
+                if (AboutToExpire(Buffs.FlourishingStarfall))
+                    return StarfallDance;
+
+                // Expiring Fountainfall.
+                if (flowExpiring)
+                    return fountainFall;
+
+                // Expiring ReverseCascade.
+                if (symmetryExpiring)
+                    return reverseCascade;
+
+                // Saber Dance overcap.
+                if (gauge.Esprit >= 85)
+                    return SaberDance;
+
+                // Fountainfall if combo ready.
+                if (flow && lastComboMove == cascade)
+                    return Fountainfall;
+
+                // Expiring combo.
+                if (comboExpiring)
+                    return fountain;
+
+                // Tillana.
+                if (HasEffect(Buffs.FlourishingFinish))
+                    return Tillana;
+
+                // Starfall Dance.
+                if (HasEffect(Buffs.FlourishingStarfall))
+                    return StarfallDance;
+
+                // Saber Dance if burst.
+                if (gauge.Esprit >= 50 && shikai)
+                    return SaberDance;
+
+                // Standard step.
+                if (standardStep)
+                    return StandardStep;
+
+                // Fountain fall.
+                if (flow)
+                    return fountainFall;
+
+                // ReverseCascade.
+                if (symmetry)
+                    return reverseCascade;
+
+                // Cascade Combo.
+                if (lastComboMove == cascade)
+                    return fountain;
+
+                // Cascade.
+                return cascade;
+                #endregion
+            }
+
+            protected override uint Invoke(uint actionID, uint lastComboMove, float comboTime, byte level)
+            {
+                if (actionID is HeadGraze)
+                    return CalculatePerfectSkill(lastComboMove, comboTime, singleTarget: true, shikai: false, bankai: false, standardStep: true);
+                if (actionID is FanDance1)
+                    return CalculatePerfectSkill(lastComboMove, comboTime, singleTarget: true, shikai: true, bankai: true, standardStep: false);
+                if (actionID is FootGraze)
+                    return CalculatePerfectSkill(lastComboMove, comboTime, singleTarget: true, shikai: false, bankai: false, standardStep: false);
+                if (actionID is LegGraze)
+                    return CalculatePerfectSkill(lastComboMove, comboTime, singleTarget: true, shikai: true, bankai: false, standardStep: false);
+
+                if (actionID is Windmill)
+                    return CalculatePerfectSkill(lastComboMove, comboTime, singleTarget: false, shikai: false, bankai: false, standardStep: true);
+                if (actionID is FanDance2)
+                    return CalculatePerfectSkill(lastComboMove, comboTime, singleTarget: false, shikai: true, bankai: true, standardStep: false);
                 return actionID;
             }
         }

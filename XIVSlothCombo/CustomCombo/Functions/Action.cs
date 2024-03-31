@@ -83,7 +83,9 @@ namespace XIVSlothCombo.CustomComboNS.Functions
         /// <param name="id"> ID of the action. </param>
         /// <returns></returns>
         //Note: Testing so far shows non charge skills have a max charge of 1, and it's zero during cooldown
+
         public static bool ActionReady(uint id) => LevelChecked(id) && (HasCharges(id) || GetCooldown(id).CooldownTotal <= 3);
+        public static bool WeaponSkillWillReady(uint id, uint marker) => LevelChecked(id) && GetCooldownRemainingTime(id) <= GetCooldownRemainingTime(marker);
 
         /// <summary> Checks if the last action performed was the passed ID. </summary>
         /// <param name="id"> ID of the action. </param>
@@ -185,7 +187,7 @@ namespace XIVSlothCombo.CustomComboNS.Functions
         /// <param name="actionID"> Action ID to check. </param>
         /// <param name="weaveTime"> Time when weaving window is over. Defaults to 0.7. </param>
         /// <returns> True or false. </returns>
-        public static bool CanWeave(uint actionID, double weaveTime = 0.7) => (GetCooldown(actionID).CooldownRemaining > weaveTime) || (HasSilence() && HasPacification());
+        public static bool CanWeave(uint actionID, double weaveTime = 0.6) => (GetCooldown(actionID).CooldownRemaining > weaveTime && ActionWatching.CanWeave) || (HasSilence() && HasPacification());
 
         /// <summary> Checks if the provided actionID has enough cooldown remaining to weave against it without causing clipping and checks if you're casting a spell. </summary>
         /// <param name="actionID"> Action ID to check. </param>

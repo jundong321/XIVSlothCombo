@@ -41,43 +41,45 @@ namespace XIVSlothCombo.Data
         {
             if (!CustomComboFunctions.InCombat()) CombatActions.Clear();
             ReceiveActionEffectHook!.Original(sourceObjectId, sourceActor, position, effectHeader, effectArray, effectTrail);
+            if (!CustomComboNS.Functions.CustomComboFunctions.InCombat()) CombatActions.Clear();
             ActionEffectHeader header = Marshal.PtrToStructure<ActionEffectHeader>(effectHeader);
+        }
+
+        private static void UpdateAction(uint actionId)
+        {
+            TimeLastActionUsed = DateTime.Now;
 
             if (ActionType is 13 or 2) return;
-            if (header.ActionId != 7 &&
-                header.ActionId != 8 &&
-                sourceObjectId == Service.ClientState.LocalPlayer.ObjectId)
+            if (actionId != 7 && actionId != 8)
             {
                 TimeLastActionUsed = DateTime.Now;
                 LastActionUseCount++;
-                if (header.ActionId != LastAction)
+                if (actionId != LastAction)
                 {
                     LastActionUseCount = 1;
                 }
 
-                LastAction = header.ActionId;
+                LastAction = actionId;
 
-                ActionSheet.TryGetValue(header.ActionId, out var sheet);
+                ActionSheet.TryGetValue(actionId, out var sheet);
                 if (sheet != null)
                 {
                     switch (sheet.ActionCategory.Value.RowId)
                     {
                         case 2: //Spell
-                            LastSpell = header.ActionId;
+                            LastSpell = actionId;
                             break;
                         case 3: //Weaponskill
-                            LastWeaponskill = header.ActionId;
+                            LastWeaponskill = actionId;
                             break;
                         case 4: //Ability
-                            LastAbility = header.ActionId;
+                            LastAbility = actionId;
                             break;
                     }
                 }
 
-                CombatActions.Add(header.ActionId);
-
-                if (Service.Configuration.EnabledOutputLog)
-                    OutputLog();
+                CombatActions.Add(actionId);
+                CanWeave = CheckWeave();
             }
         }
 
@@ -89,9 +91,8 @@ namespace XIVSlothCombo.Data
             {
                 CheckForChangedTarget(actionId, ref targetObjectId);
                 SendActionHook!.Original(targetObjectId, actionType, actionId, sequence, a5, a6, a7, a8, a9);
-                TimeLastActionUsed = DateTime.Now;
                 ActionType = actionType;
-
+                UpdateAction(actionId);
                 //Dalamud.Logging.PluginLog.Debug($"{actionId} {sequence} {a5} {a6} {a7} {a8} {a9}");
             }
             catch (Exception ex)
@@ -179,6 +180,31 @@ namespace XIVSlothCombo.Data
             return (GetAttackType(lastAction) == GetAttackType(secondLastAction) && GetAttackType(lastAction) == ActionAttackType.Ability);
         }
 
+        public static bool CheckWeave()
+        {
+            /*
+            Service.ChatGui.Print($"You just used:");
+            for (int i = 0; i < CombatActions.Count; i++)
+            {
+                Service.ChatGui.Print($"{CombatActions[i]}: {GetAttackType(CombatActions[i])}");
+            }
+            */
+
+            // Can weave if only had 0 or 1 actions.
+            if (CombatActions.Count < 2)
+                return true;
+
+            // Can weave if last action is not an ability.
+            if (GetAttackType(CombatActions.Last()) != ActionAttackType.Ability)
+                return true;
+
+            // Can weave if second last action is not ability, and has a long recast time for double weaving.
+            var secondLastAction = CombatActions[CombatActions.Count - 2];
+            if (GetAttackType(secondLastAction) != ActionAttackType.Ability && CanDoubleWeave(secondLastAction))
+                return true;
+
+            return false;
+        }
 
         public static int NumberOfGcdsUsed => CombatActions.Count(x => GetAttackType(x) == ActionAttackType.Weaponskill || GetAttackType(x) == ActionAttackType.Spell);
         public static uint LastAction { get; set; } = 0;
@@ -187,6 +213,7 @@ namespace XIVSlothCombo.Data
         public static uint LastWeaponskill { get; set; } = 0;
         public static uint LastAbility { get; set; } = 0;
         public static uint LastSpell { get; set; } = 0;
+        public static bool CanWeave { get; set; } = true;
 
         public static TimeSpan TimeSinceLastAction => DateTime.Now - TimeLastActionUsed;
 
@@ -253,6 +280,18 @@ namespace XIVSlothCombo.Data
                 ? statusCache[status]
                 : null;
 
+        }
+
+        public static bool CanDoubleWeave(uint id)
+        {
+            // Standard Finish, Technical Finish, Tillana.
+            if (id == 16192 || id == 16196 || id == 25790)
+                return false;
+            if (!ActionSheet.TryGetValue(id, out var action))
+                return true;
+            if (action.Recast100ms == 15)
+                return false;
+            return true;
         }
 
         public static ActionAttackType GetAttackType(uint id)
