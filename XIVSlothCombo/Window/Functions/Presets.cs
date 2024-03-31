@@ -1,12 +1,14 @@
 ﻿using Dalamud.Interface.Colors;
 using Dalamud.Utility;
+using ECommons.ImGuiMethods;
+using FFXIVClientStructs.FFXIV.Client.Game;
 using ImGuiNET;
-using System;
 using System.Linq;
 using System.Numerics;
 using System.Text;
 using XIVSlothCombo.Attributes;
 using XIVSlothCombo.Combos;
+using XIVSlothCombo.Combos.PvE;
 using XIVSlothCombo.Core;
 using XIVSlothCombo.Data;
 using XIVSlothCombo.Extensions;
@@ -16,11 +18,11 @@ namespace XIVSlothCombo.Window.Functions
 {
     internal class Presets : ConfigWindow
     {
-        internal static void DrawPreset(CustomComboPreset preset, CustomComboInfoAttribute info, ref int i)
+        internal unsafe static void DrawPreset(CustomComboPreset preset, CustomComboInfoAttribute info, ref int i)
         {
             var enabled = Service.Configuration.IsEnabled(preset);
             var secret = PluginConfiguration.IsSecret(preset);
-            var conflicts = Service.Configuration.GetConflicts(preset);
+            var conflicts = PluginConfiguration.GetConflicts(preset);
             var parent = PluginConfiguration.GetParent(preset);
             var blueAttr = preset.GetAttribute<BlueInactiveAttribute>();
 
@@ -30,6 +32,7 @@ namespace XIVSlothCombo.Window.Functions
             {
                 if (enabled)
                 {
+
                     EnableParentPresets(preset);
                     Service.Configuration.EnabledActions.Add(preset);
                     foreach (var conflict in conflicts)
@@ -61,7 +64,7 @@ namespace XIVSlothCombo.Window.Functions
                 ImGui.PushItemWidth(length.Length());
             }
 
-                ImGui.TextWrapped($"{info.Description}");
+            ImGui.TextWrapped($"{info.Description}");
 
             if (preset.GetHoverAttribute() != null)
             {
@@ -77,41 +80,41 @@ namespace XIVSlothCombo.Window.Functions
             ImGui.PopStyleColor();
             ImGui.Spacing();
 
-            UserConfigItems.Draw(preset, enabled);
-
-            if (preset == CustomComboPreset.NIN_ST_SimpleMode_BalanceOpener || preset == CustomComboPreset.NIN_ST_AdvancedMode_BalanceOpener)
-            {
-                ImGui.SetCursorPosX(ImGui.GetCursorPosX() + length.Length());
-                if (ImGui.Button($"Image of rotation###ninrtn{i}"))
-                {
-                    Util.OpenLink("https://i.imgur.com/q3lXeSZ.png");
-                }
-            }
-
             if (conflicts.Length > 0)
             {
-                var conflictText = conflicts.Select(conflict =>
+                ImGui.TextColored(ImGuiColors.DalamudRed, "Conflicts with:");
+                StringBuilder conflictBuilder = new();
+                ImGui.Indent();
+                foreach (var conflict in conflicts)
                 {
-                    var conflictInfo = conflict.GetComboAttribute();
+                    var comboInfo = conflict.GetAttribute<CustomComboInfoAttribute>();
+                    conflictBuilder.Insert(0, $"{comboInfo.FancyName}");
+                    var par2 = conflict;
 
-                    return $"\n - {conflictInfo.FancyName}";
+                    while (PluginConfiguration.GetParent(par2) != null)
+                    {
+                        var subpar = PluginConfiguration.GetParent(par2);
+                        conflictBuilder.Insert(0, $"{subpar?.GetAttribute<CustomComboInfoAttribute>().FancyName} -> ");
+                        par2 = subpar!.Value;
 
+                    }
 
-                }).Aggregate((t1, t2) => $"{t1}{t2}");
+                    if (!string.IsNullOrEmpty(comboInfo.JobShorthand))
+                    conflictBuilder.Insert(0, $"[{comboInfo.JobShorthand}] ");
 
-                if (conflictText.Length > 0)
-                {
-                    ImGui.TextColored(ImGuiColors.DalamudRed, $"Conflicts with: {conflictText}");
-                    ImGui.Spacing();
+                    ImGuiEx.Text(GradientColor.Get(ImGuiColors.DalamudRed, CustomComboNS.Functions.CustomComboFunctions.IsEnabled(conflict) ? ImGuiColors.HealerGreen : ImGuiColors.DalamudRed, 1500), $"- {conflictBuilder}");
+                    conflictBuilder.Clear();
                 }
+                ImGui.Unindent();
+                ImGui.Spacing();
             }
 
             if (blueAttr != null)
             {
                 if (blueAttr.Actions.Count > 0)
                 {
-                    ImGui.PushStyleColor(ImGuiCol.Text, ImGuiColors.DalamudOrange);
-                    ImGui.Text($"Missing active spells: {string.Join(", ", blueAttr.Actions.Select(x => ActionWatching.GetActionName(x)))}");
+                    ImGui.PushStyleColor(ImGuiCol.Text, blueAttr.NoneSet ? ImGuiColors.DPSRed : ImGuiColors.DalamudOrange);
+                    ImGui.Text($"{(blueAttr.NoneSet ? "No Required Spells Active:" : "Missing active spells:")} {string.Join(", ", blueAttr.Actions.Select(x => ActionWatching.GetActionName(x)))}");
                     ImGui.PopStyleColor();
                 }
 
@@ -135,12 +138,12 @@ namespace XIVSlothCombo.Window.Functions
                     var par2 = par;
                     while (PluginConfiguration.GetParent(par2) != null)
                     {
-                        var subpar = PluginConfiguration.GetParent(par2)!;
-                        builder.Insert(0,$"{subpar.GetAttribute<CustomComboInfoAttribute>().FancyName} -> ");
-                        par2 = subpar.Value;
+                        var subpar = PluginConfiguration.GetParent(par2);
+                        builder.Insert(0, $"{subpar?.GetAttribute<CustomComboInfoAttribute>().FancyName} -> ");
+                        par2 = subpar!.Value;
 
                     }
-                    
+
                     ImGui.TextWrapped($"- {builder}");
                     builder.Clear();
                 }
@@ -159,9 +162,9 @@ namespace XIVSlothCombo.Window.Functions
                     var par2 = par;
                     while (PluginConfiguration.GetParent(par2) != null)
                     {
-                        var subpar = PluginConfiguration.GetParent(par2)!;
-                        builder.Insert(0, $"{subpar.GetAttribute<CustomComboInfoAttribute>().FancyName} -> ");
-                        par2 = subpar.Value;
+                        var subpar = PluginConfiguration.GetParent(par2);
+                        builder.Insert(0, $"{subpar?.GetAttribute<CustomComboInfoAttribute>().FancyName} -> ");
+                        par2 = subpar!.Value;
 
                     }
 
@@ -183,9 +186,9 @@ namespace XIVSlothCombo.Window.Functions
                     var par2 = par;
                     while (PluginConfiguration.GetParent(par2) != null)
                     {
-                        var subpar = PluginConfiguration.GetParent(par2)!;
-                        builder.Insert(0, $"{subpar.GetAttribute<CustomComboInfoAttribute>().FancyName} -> ");
-                        par2 = subpar.Value;
+                        var subpar = PluginConfiguration.GetParent(par2);
+                        builder.Insert(0, $"{subpar?.GetAttribute<CustomComboInfoAttribute>().FancyName} -> ");
+                        par2 = subpar!.Value;
 
                     }
 
@@ -193,6 +196,17 @@ namespace XIVSlothCombo.Window.Functions
                     builder.Clear();
                 }
                 ImGui.PopStyleColor();
+            }
+
+            UserConfigItems.Draw(preset, enabled);
+
+            if (preset == CustomComboPreset.NIN_ST_SimpleMode_BalanceOpener || preset == CustomComboPreset.NIN_ST_AdvancedMode_BalanceOpener)
+            {
+                ImGui.SetCursorPosX(ImGui.GetCursorPosX() + length.Length());
+                if (ImGui.Button($"Image of rotation###ninrtn{i}"))
+                {
+                    Util.OpenLink("https://i.imgur.com/q3lXeSZ.png");
+                }
             }
 
             i++;
@@ -210,8 +224,8 @@ namespace XIVSlothCombo.Window.Functions
                     {
                         if (Service.Configuration.HideConflictedCombos)
                         {
-                            var conflictOriginals = Service.Configuration.GetConflicts(childPreset);    // Presets that are contained within a ConflictedAttribute
-                            var conflictsSource = Service.Configuration.GetAllConflicts();              // Presets with the ConflictedAttribute
+                            var conflictOriginals = PluginConfiguration.GetConflicts(childPreset);    // Presets that are contained within a ConflictedAttribute
+                            var conflictsSource = PluginConfiguration.GetAllConflicts();              // Presets with the ConflictedAttribute
 
                             if (!conflictsSource.Where(x => x == childPreset || x == preset).Any() || conflictOriginals.Length == 0)
                             {
@@ -239,7 +253,7 @@ namespace XIVSlothCombo.Window.Functions
                     }
 
                     ImGui.Unindent();
-                }   
+                }
                 else
                 {
                     i += AllChildren(presetChildren[preset]);
@@ -291,7 +305,7 @@ namespace XIVSlothCombo.Window.Functions
                 if (!Service.Configuration.EnabledActions.Contains(parent))
                 {
                     Service.Configuration.EnabledActions.Add(parent);
-                    foreach (var conflict in Service.Configuration.GetConflicts(parent))
+                    foreach (var conflict in PluginConfiguration.GetConflicts(parent))
                     {
                         Service.Configuration.EnabledActions.Remove(conflict);
                     }

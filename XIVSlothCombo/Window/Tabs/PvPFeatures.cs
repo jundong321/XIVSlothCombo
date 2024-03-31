@@ -1,6 +1,7 @@
 ﻿using System.Linq;
 using System.Numerics;
 using Dalamud.Interface;
+using Dalamud.Interface.Utility;
 using ImGuiNET;
 using XIVSlothCombo.Core;
 using XIVSlothCombo.Services;
@@ -12,6 +13,7 @@ namespace XIVSlothCombo.Window.Tabs
     {
         internal static new void Draw()
         {
+            PvEFeatures.HasToOpenJob = true;
             ImGui.Text("This tab allows you to select which PvP combos and features you wish to enable.");
 
             ImGui.PushFont(UiBuilder.IconFont);
@@ -43,8 +45,13 @@ namespace XIVSlothCombo.Window.Tabs
                     foreach (var otherJob in groupedPresets.Keys.Where(x => x != jobName))
                     {
                         ImGui.GetStateStorage().SetInt(ImGui.GetID(otherJob), 0);
+                        
                     }
-
+                    if (jobName != groupedPresets.First().Key)
+                    {
+                        ImGui.GetStateStorage().SetInt(ImGui.GetID("All Jobs"), 0);
+                    }
+                    
                     DrawHeadingContents(jobName, i);
                 }
 
@@ -69,8 +76,8 @@ namespace XIVSlothCombo.Window.Tabs
 
                 if (Service.Configuration.HideConflictedCombos)
                 {
-                    var conflictOriginals = Service.Configuration.GetConflicts(preset); // Presets that are contained within a ConflictedAttribute
-                    var conflictsSource = Service.Configuration.GetAllConflicts();      // Presets with the ConflictedAttribute
+                    var conflictOriginals = PluginConfiguration.GetConflicts(preset); // Presets that are contained within a ConflictedAttribute
+                    var conflictsSource = PluginConfiguration.GetAllConflicts();      // Presets with the ConflictedAttribute
 
                     if (!conflictsSource.Where(x => x == preset).Any() || conflictOriginals.Length == 0)
                     {

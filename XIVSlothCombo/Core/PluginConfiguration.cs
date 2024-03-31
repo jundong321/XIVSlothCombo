@@ -9,6 +9,7 @@ using XIVSlothCombo.Combos;
 using XIVSlothCombo.Combos.PvE;
 using XIVSlothCombo.Services;
 using XIVSlothCombo.Extensions;
+using System.Numerics;
 
 namespace XIVSlothCombo.Core
 {
@@ -66,11 +67,7 @@ namespace XIVSlothCombo.Core
 
         /// <summary> Gets or sets the collection of enabled combos. </summary>
         [JsonProperty("EnabledActionsV5")]
-        public HashSet<CustomComboPreset> EnabledActions { get; set; } = new();
-
-        /// <summary> Gets or sets the collection of enabled combos. </summary>
-        [JsonProperty("EnabledActionsV4")]
-        public HashSet<CustomComboPreset> EnabledActions4 { get; set; } = new();
+        public HashSet<CustomComboPreset> EnabledActions { get; set; } = [];
 
         #endregion
 
@@ -87,6 +84,8 @@ namespace XIVSlothCombo.Core
 
         /// <summary> Gets or sets the offset of the melee range check. Default is 0. </summary>
         public double MeleeOffset { get; set; } = 0;
+
+        public Vector4 TargetHighlightColor { get; set; } = new() { W = 1, X = 0.5f, Y = 0.5f, Z = 0.5f };
 
         #endregion
 
@@ -129,20 +128,20 @@ namespace XIVSlothCombo.Core
         /// <summary> Gets an array of conflicting combo presets. </summary>
         /// <param name="preset"> Preset to check. </param>
         /// <returns> The conflicting presets. </returns>
-        public CustomComboPreset[] GetConflicts(CustomComboPreset preset) => ConflictingCombos[preset];
+        public static CustomComboPreset[] GetConflicts(CustomComboPreset preset) => ConflictingCombos[preset];
 
         /// <summary> Gets the full list of conflicted combos. </summary>
-        public List<CustomComboPreset> GetAllConflicts() => ConflictingCombos.Keys.ToList();
+        public static List<CustomComboPreset> GetAllConflicts() => ConflictingCombos.Keys.ToList();
 
         /// <summary> Get all the info from conflicted combos. </summary>
-        public List<CustomComboPreset[]> GetAllConflictOriginals() => ConflictingCombos.Values.ToList();
+        public static List<CustomComboPreset[]> GetAllConflictOriginals() => ConflictingCombos.Values.ToList();
 
         #endregion
 
         #region Custom Float Values
 
         [JsonProperty]
-        private static Dictionary<string, float> CustomFloatValues { get; set; } = new Dictionary<string, float>();
+        internal static Dictionary<string, float> CustomFloatValues { get; set; } = [];
 
         /// <summary> Gets a custom float value. </summary>
         public static float GetCustomFloatValue(string config, float defaultMinValue = 0)
@@ -164,7 +163,7 @@ namespace XIVSlothCombo.Core
         #region Custom Int Values
 
         [JsonProperty]
-        private static Dictionary<string, int> CustomIntValues { get; set; } = new Dictionary<string, int>();
+        internal static Dictionary<string, int> CustomIntValues { get; set; } = [];
 
         /// <summary> Gets a custom integer value. </summary>
         public static int GetCustomIntValue(string config, int defaultMinVal = 0)
@@ -183,10 +182,31 @@ namespace XIVSlothCombo.Core
 
         #endregion
 
+        #region Custom Int Array Values
+        [JsonProperty]
+        internal static Dictionary<string, int[]> CustomIntArrayValues { get; set; } = [];
+
+        /// <summary> Gets a custom integer array value. </summary>
+        public static int[] GetCustomIntArrayValue(string config)
+        {
+            if (!CustomIntArrayValues.TryGetValue(config, out int[]? configValue))
+            {
+                SetCustomIntArrayValue(config, []);
+                return [];
+            }
+
+            return configValue;
+        }
+
+        /// <summary> Sets a custom integer array value. </summary>
+        public static void SetCustomIntArrayValue(string config, int[] value) => CustomIntArrayValues[config] = value;
+
+        #endregion
+
         #region Custom Bool Values
 
         [JsonProperty]
-        private static Dictionary<string, bool> CustomBoolValues { get; set; } = new Dictionary<string, bool>();
+        internal static Dictionary<string, bool> CustomBoolValues { get; set; } = [];
 
         /// <summary> Gets a custom boolean value. </summary>
         public static bool GetCustomBoolValue(string config)
@@ -208,7 +228,7 @@ namespace XIVSlothCombo.Core
         #region Custom Bool Array Values
 
         [JsonProperty]
-        private static Dictionary<string, bool[]> CustomBoolArrayValues { get; set; } = new Dictionary<string, bool[]>();
+        internal static Dictionary<string, bool[]> CustomBoolArrayValues { get; set; } = [];
 
         /// <summary> Gets a custom boolean array value. </summary>
         public static bool[] GetCustomBoolArrayValue(string config)
@@ -230,7 +250,7 @@ namespace XIVSlothCombo.Core
         #region Job-specific
 
         /// <summary> Gets active Blue Mage (BLU) spells. </summary>
-        public List<uint> ActiveBLUSpells { get; set; } = new List<uint>();
+        public List<uint> ActiveBLUSpells { get; set; } = [];
 
         /// <summary> Gets or sets an array of 4 ability IDs to interact with the <see cref="CustomComboPreset.DNC_DanceComboReplacer"/> combo. </summary>
         public uint[] DancerDanceCompatActionIDs { get; set; } = new uint[]
@@ -246,23 +266,23 @@ namespace XIVSlothCombo.Core
         #region Preset Resetting
 
         [JsonProperty]
-        private static Dictionary<string, bool> ResetFeatureCatalog { get; set; } = new Dictionary<string, bool>();
+        private static Dictionary<string, bool> ResetFeatureCatalog { get; set; } = [];
 
-        private bool GetResetValues(string config)
+        private static bool GetResetValues(string config)
         {
             if (ResetFeatureCatalog.TryGetValue(config, out var value)) return value;
 
             return false;
         }
 
-        private void SetResetValues(string config, bool value)
+        private static void SetResetValues(string config, bool value)
         {
             ResetFeatureCatalog[config] = value;
         }
 
         public void ResetFeatures(string config, int[] values)
         {
-            Dalamud.Logging.PluginLog.Debug($"{config} {GetResetValues(config)}");
+            Service.PluginLog.Debug($"{config} {GetResetValues(config)}");
             if (!GetResetValues(config))
             {
                 bool needToResetMessagePrinted = false;
@@ -271,7 +291,7 @@ namespace XIVSlothCombo.Core
 
                 foreach (int value in values)
                 {
-                    Dalamud.Logging.PluginLog.Debug(value.ToString());
+                    Service.PluginLog.Debug(value.ToString());
                     if (presets.Contains(value))
                     {
                         var preset = Enum.GetValues<CustomComboPreset>()
@@ -301,6 +321,11 @@ namespace XIVSlothCombo.Core
 
         #endregion
 
+        #region UI Settings
+        public bool AutomaticallyOpenToCurrentJob { get; set; } = false;
+
+        #endregion
+
         #region Other (SpecialEvent, MotD, Save)
 
         /// <summary> Handles 'special event' feature naming. </summary>
@@ -308,6 +333,8 @@ namespace XIVSlothCombo.Core
 
         /// <summary> Hides the message of the day. </summary>
         public bool HideMessageOfTheDay { get; set; } = false;
+
+        public bool RecommendedSettingsViewed { get; set; } = false;
 
         /// <summary> Save the configuration to disk. </summary>
         public void Save() => Service.Interface.SavePluginConfig(this);

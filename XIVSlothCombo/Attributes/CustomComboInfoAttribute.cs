@@ -51,10 +51,36 @@ namespace XIVSlothCombo.Attributes
         /// <summary> Gets the job name. </summary>
         public string JobName => JobIDToName(JobID);
 
+        public string JobShorthand => JobIDToShorthand(JobID);
+
+        private static string JobIDToShorthand(byte key)
+        {
+            if (key == 41)
+                return "VPR";
+
+            if (key == 0)
+                return "";
+
+            if (ClassJobs.TryGetValue(key, out var job))
+            {
+                return job.Abbreviation.RawString;
+            }
+            else
+            {
+                return "";
+            }
+        }
+
         private static readonly Dictionary<uint, ClassJob> ClassJobs = Service.DataManager.GetExcelSheet<ClassJob>()!.ToDictionary(i => i.RowId, i => i);
 
         public static string JobIDToName(byte key)
         {
+            if (key == 41)
+                return "Viper";
+
+            if (key == 0)
+                return "General/Multiple Jobs";
+
             //Override DOH/DOL
             if (key is DOH.JobID) key = 08; //Set to Carpenter
             if (key is DOL.JobID) key = 16; //Set to Miner

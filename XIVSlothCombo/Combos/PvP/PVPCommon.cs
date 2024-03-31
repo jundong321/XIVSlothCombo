@@ -44,8 +44,8 @@ namespace XIVSlothCombo.Combos.PvP
 
         // Lists of Excluded skills 
         internal static readonly List<uint>
-            MovmentSkills = new() { WARPvP.Onslaught, NINPvP.Shukuchi, DNCPvP.EnAvant, MNKPvP.ThunderClap, RDMPvP.CorpsACorps, RDMPvP.Displacement, SGEPvP.Icarus, RPRPvP.HellsIngress, RPRPvP.Regress, BRDPvP.RepellingShot, BLMPvP.AetherialManipulation, DRGPvP.ElusiveJump, GNBPvP.RoughDivide },
-            GlobalSkills = new() { Teleport, Guard, Recuperate, Purify, StandardElixir, Sprint };
+            MovmentSkills = [WARPvP.Onslaught, NINPvP.Shukuchi, DNCPvP.EnAvant, MNKPvP.ThunderClap, RDMPvP.CorpsACorps, RDMPvP.Displacement, SGEPvP.Icarus, RPRPvP.HellsIngress, RPRPvP.Regress, BRDPvP.RepellingShot, BLMPvP.AetherialManipulation, DRGPvP.ElusiveJump, GNBPvP.RoughDivide],
+            GlobalSkills = [Teleport, Guard, Recuperate, Purify, StandardElixir, Sprint];
 
         internal class GlobalEmergencyHeals : CustomCombo
         {
@@ -68,7 +68,7 @@ namespace XIVSlothCombo.Combos.PvP
                 return actionID;
             }
 
-            public bool Execute()
+            public static bool Execute()
             {
                 var jobMaxHp = LocalPlayer.MaxHp;
                 var threshold = PluginConfiguration.GetCustomIntValue(Config.EmergencyHealThreshold);
@@ -77,6 +77,7 @@ namespace XIVSlothCombo.Combos.PvP
 
 
                 if (HasEffect(3180)) return false; //DRG LB buff
+                if (HasEffectAny(1420)) return false; //Rival Wings Mounted
                 if (HasEffect(DRKPvP.Buffs.UndeadRedemption)) return false;
                 if (LocalPlayer.CurrentMp < 2500) return false;
                 if (remainingPercentage * 100 > threshold) return false;
@@ -107,13 +108,14 @@ namespace XIVSlothCombo.Combos.PvP
                 return actionID;
             }
 
-            public bool Execute()
+            public static bool Execute()
             {
                 var jobMaxHp = LocalPlayer.MaxHp;
                 var threshold = PluginConfiguration.GetCustomIntValue(Config.EmergencyGuardThreshold);
                 var remainingPercentage = (float)LocalPlayer.CurrentHp / (float)jobMaxHp;
 
                 if (HasEffect(3180)) return false; //DRG LB buff
+                if (HasEffectAny(1420)) return false; //Rival Wings Mounted
                 if (HasEffect(DRKPvP.Buffs.UndeadRedemption)) return false;
                 if (HasEffectAny(Debuffs.Unguarded) || HasEffect(WARPvP.Buffs.InnerRelease)) return false;
                 if (GetCooldown(Guard).IsCooldown) return false;
@@ -144,11 +146,12 @@ namespace XIVSlothCombo.Combos.PvP
                 return actionID;
             }
 
-            public bool Execute()
+            public static bool Execute()
             {
                 var selectedStatuses = PluginConfiguration.GetCustomBoolArrayValue(Config.QuickPurifyStatuses);
 
                 if (HasEffect(3180)) return false; //DRG LB buff
+                if (HasEffectAny(1420)) return false; //Rival Wings Mounted
 
                 if (selectedStatuses.Length == 0) return false;
                 if (GetCooldown(Purify).IsCooldown) return false;

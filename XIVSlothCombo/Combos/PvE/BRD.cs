@@ -1,11 +1,12 @@
-using System;
-using System.Linq;
 using Dalamud.Game.ClientState.JobGauge.Enums;
 using Dalamud.Game.ClientState.JobGauge.Types;
 using Dalamud.Game.ClientState.Statuses;
+using System;
+using System.Linq;
 using XIVSlothCombo.Combos.PvE.Content;
 using XIVSlothCombo.Core;
 using XIVSlothCombo.CustomComboNS;
+using XIVSlothCombo.Data;
 
 namespace XIVSlothCombo.Combos.PvE
 {
@@ -503,14 +504,15 @@ namespace XIVSlothCombo.Combos.PvE
                     bool songArmy = gauge.Song == Song.ARMY;
                     bool canInterrupt = CanInterruptEnemy() && IsOffCooldown(All.HeadGraze);
                     int targetHPThreshold = PluginConfiguration.GetCustomIntValue(Config.BRD_NoWasteHPPercentage);
-                    bool isEnemyHealthHigh = IsEnabled(CustomComboPreset.BRD_Simple_NoWaste)
-                        ? GetTargetHPPercent() > targetHPThreshold
-                        : true;
+                    bool isEnemyHealthHigh = !IsEnabled(CustomComboPreset.BRD_Simple_NoWaste) || GetTargetHPPercent() > targetHPThreshold;
 
                     if (!InCombat() && (inOpener || openerFinished))
                     {
                         openerFinished = false;
                     }
+
+                    if (!IsEnabled(CustomComboPreset.BRD_Simple_NoWaste))
+                        openerFinished = true;
 
                     if (IsEnabled(CustomComboPreset.BRD_Simple_Interrupt) && canInterrupt)
                         return All.HeadGraze;
@@ -640,7 +642,7 @@ namespace XIVSlothCombo.Combos.PvE
                         float ragingCD = GetCooldownRemainingTime(RagingStrikes);
                         float radiantCD = GetCooldownRemainingTime(RadiantFinale);
 
-                        if (empyrealReady && ((!openerFinished && IsOnCooldown(RagingStrikes)) || (openerFinished && battleVoiceCD >= 3.5)))
+                        if (empyrealReady && ((!openerFinished && IsOnCooldown(RagingStrikes)) || (openerFinished && battleVoiceCD >= 3.5) || !IsEnabled(CustomComboPreset.BRD_Simple_Buffs)))
                             return EmpyrealArrow;
 
                         if (LevelChecked(PitchPerfect) && songWanderer &&
@@ -648,7 +650,7 @@ namespace XIVSlothCombo.Combos.PvE
                             ((!openerFinished && IsOnCooldown(RagingStrikes)) || (openerFinished && battleVoiceCD >= 3.5)))
                             return OriginalHook(WanderersMinuet);
 
-                        if (sidewinderReady && ((!openerFinished && IsOnCooldown(RagingStrikes)) || (openerFinished && battleVoiceCD >= 3.5)))
+                        if (sidewinderReady && ((!openerFinished && IsOnCooldown(RagingStrikes)) || (openerFinished && battleVoiceCD >= 3.5) || !IsEnabled(CustomComboPreset.BRD_Simple_Buffs)))
                         {
                             if (IsEnabled(CustomComboPreset.BRD_Simple_Pooling))
                             {
@@ -839,31 +841,19 @@ namespace XIVSlothCombo.Combos.PvE
                     // Doesn't display the lowest cooldown song if they have been used out of order and are all on cooldown.
                     BRDGauge? gauge = GetJobGauge<BRDGauge>();
                     int songTimerInSeconds = gauge.SongTimer / 1000;
-                    bool songWanderer = gauge.Song != Song.WANDERER;
-                    bool canUse = (songWanderer || songTimerInSeconds < 3) && !JustUsed(WanderersMinuet);
                     bool wanderersMinuetReady = LevelChecked(WanderersMinuet) && IsOffCooldown(WanderersMinuet);
                     bool magesBalladReady = LevelChecked(MagesBallad) && IsOffCooldown(MagesBallad);
                     bool armysPaeonReady = LevelChecked(ArmysPaeon) && IsOffCooldown(ArmysPaeon);
 
-                    if (wanderersMinuetReady)
+                    if (wanderersMinuetReady || (gauge.Song == Song.WANDERER && songTimerInSeconds > 2))
                         return WanderersMinuet;
 
-                    if (canUse)
-                    {
-                        if (magesBalladReady)
-                        {
-                            if (songWanderer && gauge.Repertoire > 0)
-                                return OriginalHook(WanderersMinuet);
-                            return MagesBallad;
-                        }
-
-                        if (armysPaeonReady)
-                        {
-                            if (songWanderer && gauge.Repertoire > 0)
-                                return OriginalHook(WanderersMinuet);
-                            return ArmysPaeon;
-                        }
-                    }
+                    if (magesBalladReady || (gauge.Song == Song.MAGE && songTimerInSeconds > 11))
+                        return MagesBallad;
+                    
+                    if (armysPaeonReady || (gauge.Song == Song.ARMY && songTimerInSeconds > 2))
+                        return ArmysPaeon;
+                    
                 }
 
                 return actionID;

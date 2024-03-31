@@ -1,20 +1,30 @@
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Net.Http;
-using System.Threading.Tasks;
+using Dalamud.Game;
 using Dalamud.Game.ClientState.Statuses;
 using Dalamud.Game.Command;
 using Dalamud.Game.Text;
 using Dalamud.Game.Text.SeStringHandling;
 using Dalamud.Game.Text.SeStringHandling.Payloads;
 using Dalamud.Plugin;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Net.Http;
+using System.Threading.Tasks;
 using XIVSlothCombo.Combos;
+using XIVSlothCombo.Combos.PvE;
+using XIVSlothCombo.Combos.PvP;
 using XIVSlothCombo.Core;
 using XIVSlothCombo.Data;
 using XIVSlothCombo.Services;
 using XIVSlothCombo.Window;
+using XIVSlothCombo.Window.Tabs;
+using ECommons;
+using Dalamud.Plugin.Services;
+using System.Reflection;
+using ECommons.DalamudServices;
+using Dalamud.Utility;
+using XIVSlothCombo.Attributes;
 
 namespace XIVSlothCombo
 {
@@ -24,27 +34,42 @@ namespace XIVSlothCombo
         private const string Command = "/scombo";
 
         private readonly ConfigWindow configWindow;
-
+        private readonly HttpClient httpClient = new();
+        
         private readonly TextPayload starterMotd = new("[Sloth Message of the Day] ");
+        private static uint? jobID;
+
+        public static uint? JobID
+        {
+            get => jobID;
+            set
+            {
+                if (jobID != value && value != null)
+                {
+                    Service.PluginLog.Debug($"Switched to job {value}");
+                    PvEFeatures.HasToOpenJob = true;
+                }
+                jobID = value;
+            }
+        }
 
         /// <summary> Initializes a new instance of the <see cref="XIVSlothCombo"/> class. </summary>
         /// <param name="pluginInterface"> Dalamud plugin interface. </param>
         public XIVSlothCombo(DalamudPluginInterface pluginInterface)
         {
             pluginInterface.Create<Service>();
+            ECommonsMain.Init(pluginInterface, this);
 
             Service.Configuration = pluginInterface.GetPluginConfig() as PluginConfiguration ?? new PluginConfiguration();
             Service.Address = new PluginAddressResolver();
-            Service.Address.Setup();
-
-            if (Service.Configuration.Version == 4)
-                UpgradeConfig4();
+            Service.Address.Setup(Service.SigScanner);
 
             Service.ComboCache = new CustomComboCache();
             Service.IconReplacer = new IconReplacer();
             ActionWatching.Enable();
+            Combos.JobHelpers.AST.Init();
 
-            configWindow = new();
+            configWindow = new ConfigWindow(this);
 
             Service.Interface.UiBuilder.Draw += DrawUI;
             Service.Interface.UiBuilder.OpenConfigUi += OnOpenConfigUi;
@@ -58,9 +83,46 @@ namespace XIVSlothCombo
             Service.ClientState.Login += PrintLoginMessage;
             if (Service.ClientState.IsLoggedIn) ResetFeatures();
 
+            Service.Framework.Update += OnFrameworkUpdate;
+
             KillRedundantIDs();
+            HandleConflictedCombos();
+
+#if DEBUG
+            PvEFeatures.HasToOpenJob = false;
+            configWindow.Visible = true;
+#endif
         }
 
+        private static void HandleConflictedCombos()
+        {
+            var enabledCopy = Service.Configuration.EnabledActions.ToHashSet(); //Prevents issues later removing during enumeration
+            foreach (var preset in enabledCopy)
+            {
+                if (!Service.Configuration.IsEnabled(preset)) continue;
+
+                var conflictingCombos = preset.GetAttribute<ConflictingCombosAttribute>();
+                if (conflictingCombos != null)
+                {
+                    foreach (var conflict in conflictingCombos.ConflictingPresets)
+                    {
+                        if (Service.Configuration.IsEnabled(conflict))
+                        {
+                            Service.Configuration.EnabledActions.Remove(conflict);
+                            Service.Configuration.Save();
+                        }
+                    }
+                }
+            }
+        }
+
+        private static void OnFrameworkUpdate(IFramework framework)
+        {
+            if (Service.ClientState.LocalPlayer is not null)
+            JobID = Service.ClientState.LocalPlayer?.ClassJob?.Id;
+
+            BlueMageService.PopulateBLUSpells();
+        }
         private static void KillRedundantIDs()
         {
             List<int> redundantIDs = Service.Configuration.EnabledActions.Where(x => int.TryParse(x.ToString(), out _)).OrderBy(x => x).Cast<int>().ToList();
@@ -73,7 +135,7 @@ namespace XIVSlothCombo
 
         }
 
-        private void ResetFeatures()
+        private static void ResetFeatures()
         {
             // Enumerable.Range is a start and count, not a start and end.
             // Enumerable.Range(Start, Count)
@@ -82,11 +144,13 @@ namespace XIVSlothCombo
             Service.Configuration.ResetFeatures("v3.0.18.0_GNBCleanup", Enumerable.Range(7000, 700).ToArray());
             Service.Configuration.ResetFeatures("v3.0.18.0_PvPCleanup", Enumerable.Range(80000, 11000).ToArray());
             Service.Configuration.ResetFeatures("v3.0.18.1_PLDRework", Enumerable.Range(11000, 100).ToArray());
+            Service.Configuration.ResetFeatures("v3.1.0.1_BLMRework", Enumerable.Range(2000, 100).ToArray());
+            Service.Configuration.ResetFeatures("v3.1.1.0_DRGRework", Enumerable.Range(6000, 800).ToArray());
         }
 
         private void DrawUI() => configWindow.Draw();
 
-        private void PrintLoginMessage(object? sender, EventArgs e)
+        private void PrintLoginMessage()
         {
             Task.Delay(TimeSpan.FromSeconds(5)).ContinueWith(task => ResetFeatures());
 
@@ -98,18 +162,19 @@ namespace XIVSlothCombo
         {
             try
             {
-                using HttpResponseMessage? motd = Dalamud.Utility.Util.HttpClient.GetAsync("https://raw.githubusercontent.com/Nik-Potokar/XIVSlothCombo/main/res/motd.txt").Result;
+                string basicMessage = $"Welcome to XIVSlothCombo v{this.GetType().Assembly.GetName().Version}!";
+                using HttpResponseMessage? motd = httpClient.GetAsync("https://raw.githubusercontent.com/Nik-Potokar/XIVSlothCombo/main/res/motd.txt").Result;
                 motd.EnsureSuccessStatusCode();
                 string? data = motd.Content.ReadAsStringAsync().Result;
-                List<Payload>? payloads = new()
-                {
+                List<Payload>? payloads =
+                [
                     starterMotd,
                     EmphasisItalicPayload.ItalicsOn,
-                    new TextPayload(data.Trim()),
+                    string.IsNullOrEmpty(data) ? new TextPayload(basicMessage) : new TextPayload(data.Trim()),
                     EmphasisItalicPayload.ItalicsOff
-                };
+                ];
 
-                Service.ChatGui.PrintChat(new XivChatEntry
+                Service.ChatGui.Print(new XivChatEntry
                 {
                     Message = new SeString(payloads),
                     Type = XivChatType.Echo
@@ -118,12 +183,12 @@ namespace XIVSlothCombo
 
             catch (Exception ex)
             {
-                Dalamud.Logging.PluginLog.Error(ex, "Unable to retrieve MotD");
+                Service.PluginLog.Error(ex, "Unable to retrieve MotD");
             }
         }
 
         /// <inheritdoc/>
-        public string Name => "XIVSlothCombo";
+        public static string Name => "XIVSlothCombo";
 
         /// <inheritdoc/>
         public void Dispose()
@@ -131,17 +196,25 @@ namespace XIVSlothCombo
             configWindow?.Dispose();
 
             Service.CommandManager.RemoveHandler(Command);
-
+            Service.Framework.Update -= OnFrameworkUpdate;
             Service.Interface.UiBuilder.OpenConfigUi -= OnOpenConfigUi;
             Service.Interface.UiBuilder.Draw -= DrawUI;
 
             Service.IconReplacer?.Dispose();
             Service.ComboCache?.Dispose();
             ActionWatching.Dispose();
+            Combos.JobHelpers.AST.Dispose();
+            DisposeOpeners();
 
             Service.ClientState.Login -= PrintLoginMessage;
         }
 
+
+        private static void DisposeOpeners()
+        {
+            NIN.NIN_ST_SimpleMode.NINOpener.Dispose();
+            NIN.NIN_ST_AdvancedMode.NINOpener.Dispose();
+        }
         private void OnOpenConfigUi() => configWindow.Visible = !configWindow.Visible;
 
         private void OnCommand(string command, string arguments)
@@ -317,10 +390,10 @@ namespace XIVSlothCombo
                                 $"{Service.ClientState.LocalPlayer.ClassJob.GameData.Name} / " +                                // - Client Name
                                 $"{Service.ClientState.LocalPlayer.ClassJob.GameData.NameEnglish} / " +                         // - EN Name
                                 $"{Service.ClientState.LocalPlayer.ClassJob.GameData.Abbreviation}");                           // - Abbreviation
-                            file.WriteLine($"Current Job Index: {Service.ClientState.LocalPlayer.ClassJob.GameData.JobIndex}"); // Job Index
+                            file.WriteLine($"Current Job Index: {Service.ClientState.LocalPlayer.ClassJob.Id}");                // Job Index
                             file.WriteLine($"Current Job Level: {Service.ClientState.LocalPlayer.Level}");                      // Job Level
                             file.WriteLine("");
-                            file.WriteLine($"Current Zone: {Service.ClientState.TerritoryType}");                               // Current zone location
+                            file.WriteLine($"Current Zone: {Service.DataManager.GetExcelSheet<Lumina.Excel.GeneratedSheets.TerritoryType>()?.FirstOrDefault(x => x.RowId == Service.ClientState.TerritoryType).PlaceName.Value.Name}");   // Current zone location
                             file.WriteLine($"Current Party Size: {Service.PartyList.Length}");                                  // Current party size
                             file.WriteLine("");
                             file.WriteLine($"START ENABLED FEATURES");
@@ -349,7 +422,97 @@ namespace XIVSlothCombo
                                 }
                             }
 
+
                             file.WriteLine($"END ENABLED FEATURES");
+                            file.WriteLine("");
+
+                            file.WriteLine("START CONFIG SETTINGS");
+                            if (string.IsNullOrEmpty(specificJob))
+                            {
+                                file.WriteLine("---INT VALUES---");
+                                foreach (var item in PluginConfiguration.CustomIntValues.OrderBy(x => x.Key))
+                                {
+                                    file.WriteLine($"{item.Key.Trim()} - {item.Value}");
+                                }
+                                file.WriteLine("");
+                                file.WriteLine("---FLOAT VALUES---");
+                                foreach (var item in PluginConfiguration.CustomFloatValues.OrderBy(x => x.Key))
+                                {
+                                    file.WriteLine($"{item.Key.Trim()} - {item.Value}");
+                                }
+                                file.WriteLine("");
+                                file.WriteLine("---BOOL VALUES---");
+                                foreach (var item in PluginConfiguration.CustomBoolValues.OrderBy(x => x.Key))
+                                {
+                                    file.WriteLine($"{item.Key.Trim()} - {item.Value}");
+                                }
+                                file.WriteLine("");
+                                file.WriteLine("---BOOL ARRAY VALUES---");
+                                foreach (var item in PluginConfiguration.CustomBoolArrayValues.OrderBy(x => x.Key))
+                                {
+                                    file.WriteLine($"{item.Key.Trim()} - {string.Join(", ", item.Value)}");
+                                }
+                            }
+                            else
+                            {
+                                var jobname = ConfigWindow.groupedPresets.Where(x => x.Value.Any(y => y.Info.JobShorthand.Equals(specificJob.ToLower(), StringComparison.CurrentCultureIgnoreCase))).FirstOrDefault().Key;
+                                var jobID = Service.DataManager.GetExcelSheet<Lumina.Excel.GeneratedSheets.ClassJob>()?
+                                    .Where(x => x.Name.RawString.Equals(jobname, StringComparison.CurrentCultureIgnoreCase))
+                                    .First()
+                                    .RowId;
+
+                                var whichConfig = jobID switch
+                                {
+                                    1 or 19 => typeof(PLD.Config),
+                                    2 or 20 => typeof(MNK.Config),
+                                    3 or 21 => typeof(WAR.Config),
+                                    4 or 22 => typeof(DRG.Config),
+                                    5 or 23 => typeof(BRD.Config),
+                                    6 or 24 => typeof(WHM.Config),
+                                    7 or 25 => typeof(BLM.Config),
+                                    26 or 27 => typeof(SMN.Config),
+                                    28 => typeof(SCH.Config),
+                                    29 or 30 => typeof(NIN.Config),
+                                    31 => typeof(MCH.Config),
+                                    32 => typeof(DRK.Config),
+                                    33 => typeof(AST.Config),
+                                    34 => typeof(SAM.Config),
+                                    35 => typeof(RDM.Config),
+                                    //36 => typeof(BLU.Config),
+                                    37 => typeof(GNB.Config),
+                                    38 => typeof(DNC.Config),
+                                    39 => typeof(RPR.Config),
+                                    40 => typeof(SGE.Config),
+                                    _ => throw new NotImplementedException(),
+                                };
+
+                                foreach (var config in whichConfig.GetMembers().Where(x => x.MemberType == MemberTypes.Field || x.MemberType == MemberTypes.Property))
+                                {
+                                    string key = config.Name!;
+
+                                    if (PluginConfiguration.CustomIntValues.TryGetValue(key, out int intvalue)) { file.WriteLine($"{key} - {intvalue}"); continue; }
+                                    if (PluginConfiguration.CustomFloatValues.TryGetValue(key, out float floatvalue)) { file.WriteLine($"{key} - {floatvalue}"); continue; }
+                                    if (PluginConfiguration.CustomBoolValues.TryGetValue(key, out bool boolvalue)) { file.WriteLine($"{key} - {boolvalue}"); continue; }
+                                    if (PluginConfiguration.CustomBoolArrayValues.TryGetValue(key, out bool[]? boolarrayvalue)) { file.WriteLine($"{key} - {string.Join(", ", boolarrayvalue)}"); continue; }
+
+                                    file.WriteLine($"{key} - NOT SET");
+                                }
+
+                                foreach (var config in typeof(PvPCommon.Config).GetMembers().Where(x => x.MemberType == MemberTypes.Field || x.MemberType == MemberTypes.Property))
+                                {
+                                    string key = config.Name!;
+
+                                    if (PluginConfiguration.CustomIntValues.TryGetValue(key, out int intvalue)) { file.WriteLine($"{key} - {intvalue}"); continue; }
+                                    if (PluginConfiguration.CustomFloatValues.TryGetValue(key, out float floatalue)) { file.WriteLine($"{key} - {floatalue}"); continue; }
+                                    if (PluginConfiguration.CustomBoolValues.TryGetValue(key, out bool boolvalue)) { file.WriteLine($"{key} - {boolvalue}"); continue; }
+                                    if (PluginConfiguration.CustomBoolArrayValues.TryGetValue(key, out bool[]? boolarrayvalue)) { file.WriteLine($"{key} - {string.Join(", ", boolarrayvalue)}"); continue; }
+
+                                    file.WriteLine($"{key} - NOT SET");
+                                }
+                            }
+
+
+                            file.WriteLine("END CONFIG SETTINGS");
                             file.WriteLine("");
                             file.WriteLine($"Redundant IDs found: {i}");
 
@@ -372,7 +535,7 @@ namespace XIVSlothCombo
                                 file.WriteLine($"START STATUS EFFECTS");
                                 foreach (Status? status in Service.ClientState.LocalPlayer.StatusList)
                                 {
-                                    file.WriteLine($"ID: {status.StatusId}, COUNT: {status.StackCount}, SOURCE: {status.SourceId}");
+                                    file.WriteLine($"ID: {status.StatusId}, COUNT: {status.StackCount}, SOURCE: {status.SourceId} NAME: {ActionWatching.GetStatusName(status.StatusId)}");
                                 }
 
                                 file.WriteLine($"END STATUS EFFECTS");
@@ -386,128 +549,24 @@ namespace XIVSlothCombo
 
                         catch (Exception ex)
                         {
-                            Dalamud.Logging.PluginLog.Error(ex, "Debug Log");
+                            Service.PluginLog.Error(ex, "Debug Log");
                             Service.ChatGui.Print("Unable to write Debug log.");
                             break;
                         }
                     }
                 default:
                     configWindow.Visible = !configWindow.Visible;
+                    PvEFeatures.HasToOpenJob = true;
+                    if (argumentsParts[0].Length > 0)
+                    {
+                        var jobname = ConfigWindow.groupedPresets.Where(x => x.Value.Any(y => y.Info.JobShorthand.Equals(argumentsParts[0].ToLower(), StringComparison.CurrentCultureIgnoreCase))).FirstOrDefault().Key;
+                        var header = $"{jobname} - {argumentsParts[0].ToUpper()}";
+                        Service.PluginLog.Debug($"{jobname}");
+                        PvEFeatures.HeaderToOpen = header;
+                    }
                     break;
             }
 
-            Service.Configuration.Save();
-        }
-
-        private static void UpgradeConfig4()
-        {
-            Service.Configuration.Version = 5;
-            Service.Configuration.EnabledActions = Service.Configuration.EnabledActions4
-                .Select(preset => (int)preset switch
-                    {
-                        27 => 3301,
-                        75 => 3302,
-                        73 => 3303,
-                        25 => 2501,
-                        26 => 2502,
-                        56 => 2503,
-                        70 => 2504,
-                        71 => 2505,
-                        110 => 2506,
-                        95 => 2507,
-                        41 => 2301,
-                        42 => 2302,
-                        63 => 2303,
-                        74 => 2304,
-                        33 => 3801,
-                        31 => 3802,
-                        34 => 3803,
-                        43 => 3804,
-                        50 => 3805,
-                        72 => 3806,
-                        103 => 3807,
-                        44 => 2201,
-                        0 => 2202,
-                        1 => 2203,
-                        2 => 2204,
-                        3 => 3201,
-                        4 => 3202,
-                        57 => 3203,
-                        85 => 3204,
-                        20 => 3701,
-                        52 => 3702,
-                        96 => 3703,
-                        97 => 3704,
-                        22 => 3705,
-                        30 => 3706,
-                        83 => 3707,
-                        84 => 3708,
-                        23 => 3101,
-                        24 => 3102,
-                        47 => 3103,
-                        58 => 3104,
-                        66 => 3105,
-                        102 => 3106,
-                        54 => 2001,
-                        82 => 2002,
-                        106 => 2003,
-                        17 => 3001,
-                        18 => 3002,
-                        19 => 3003,
-                        87 => 3004,
-                        88 => 3005,
-                        89 => 3006,
-                        90 => 3007,
-                        91 => 3008,
-                        92 => 3009,
-                        107 => 3010,
-                        108 => 3011,
-                        5 => 1901,
-                        6 => 1902,
-                        59 => 1903,
-                        7 => 1904,
-                        55 => 1905,
-                        86 => 1906,
-                        69 => 1907,
-                        48 => 3501,
-                        49 => 3502,
-                        68 => 3503,
-                        53 => 3504,
-                        93 => 3505,
-                        101 => 3506,
-                        94 => 3507,
-                        11 => 3401,
-                        12 => 3402,
-                        13 => 3403,
-                        14 => 3404,
-                        15 => 3405,
-                        81 => 3406,
-                        60 => 3407,
-                        61 => 3408,
-                        64 => 3409,
-                        65 => 3410,
-                        109 => 3411,
-                        29 => 2801,
-                        37 => 2802,
-                        39 => 2701,
-                        40 => 2702,
-                        8 => 2101,
-                        9 => 2102,
-                        10 => 2103,
-                        78 => 2104,
-                        79 => 2105,
-                        67 => 2106,
-                        104 => 2107,
-                        35 => 2401,
-                        36 => 2402,
-                        76 => 2403,
-                        77 => 2404,
-                        _ => 0,
-                    })
-                .Where(id => id != 0)
-                .Select(id => (CustomComboPreset)id)
-                .ToHashSet();
-            Service.Configuration.EnabledActions4 = new();
             Service.Configuration.Save();
         }
     }
