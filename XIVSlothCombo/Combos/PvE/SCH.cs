@@ -25,6 +25,10 @@ namespace XIVSlothCombo.Combos.PvE
             Excogitation = 7434,
             Consolation = 16546,
             Resurrection = 173,
+            EmergencyTactics = 3586,
+            EmergencyTacticsInSeraphism = 37037,
+            Manifestation = 37015,
+            Consitation = 37013,
 
             // Offense
             Bio = 17864,
@@ -54,7 +58,8 @@ namespace XIVSlothCombo.Combos.PvE
             Aetherflow = 166,
             Recitation = 16542,
             ChainStratagem = 7436,
-            DeploymentTactics = 3585;
+            DeploymentTactics = 3585,
+            Seraphism = 37014;
 
         //Action Groups
         internal static readonly List<uint>
@@ -68,7 +73,9 @@ namespace XIVSlothCombo.Combos.PvE
                 Galvanize = 297,
                 SacredSoil = 299,
                 Recitation = 1896,
-                ImpactImminent = 3882;
+                ImpactImminent = 3882,
+                Seraphism = 3884,
+                EmergencyTactics = 792;
         }
 
         internal static class Debuffs
@@ -235,8 +242,7 @@ namespace XIVSlothCombo.Combos.PvE
                     if (!HasAetherFlows)
                     {
                         bool ShowAetherflowOnAll = (Config.SCH_Aetherflow_Display == 1);
-                        if (((actionID is EnergyDrain && !ShowAetherflowOnAll) || ShowAetherflowOnAll) &&
-                            IsOffCooldown(actionID))
+                        if (ShowAetherflowOnAll || actionID is EnergyDrain)
                         {
                             if (IsEnabled(CustomComboPreset.SCH_Aetherflow_Dissipation) &&
                                 ActionReady(Dissipation) &&
@@ -373,13 +379,17 @@ namespace XIVSlothCombo.Combos.PvE
                         // Energy Drain
                         if (IsEnabled(CustomComboPreset.SCH_DPS_EnergyDrain))
                         {
-                            float edTime = Config.SCH_ST_DPS_EnergyDrain_Adv ? Config.SCH_ST_DPS_EnergyDrain : 10f;
+                            float edTime = Gauge.Aetherflow * 2.5f;
                             if (LevelChecked(EnergyDrain) && InCombat() &&
                                 Gauge.HasAetherflow() &&
                                 GetCooldownRemainingTime(Aetherflow) <= edTime &&
                                 (!IsEnabled(CustomComboPreset.SCH_DPS_EnergyDrain_BurstSaver) || (LevelChecked(ChainStratagem) && GetCooldownRemainingTime(ChainStratagem) > 10)) &&
                                 CanSpellWeave(actionID))
                                 return EnergyDrain;
+
+                            // BenefulImpaction
+                            if (HasEffect(Buffs.ImpactImminent) && InCombat() && CanSpellWeave(actionID))
+                                return BanefulImpaction;
                         }
 
                         // Chain Stratagem
@@ -400,7 +410,6 @@ namespace XIVSlothCombo.Combos.PvE
                                 return BanefulImpaction; 
                             // Don't use OriginalHook(ChainStratagem), because player can disable ingame action replacement
                         }
-                        
 
                         //Bio/Biolysis
                         if (IsEnabled(CustomComboPreset.SCH_DPS_Bio) && LevelChecked(Bio) && InCombat())
@@ -426,6 +435,7 @@ namespace XIVSlothCombo.Combos.PvE
                             LevelChecked(Ruin2) &&
                             IsMoving) return OriginalHook(Ruin2);
                     }
+                    return OriginalHook(Broil4);
                 }
                 return actionID;
             }
@@ -592,5 +602,58 @@ namespace XIVSlothCombo.Combos.PvE
                 return actionID;
             }
         }
+
+        /*
+         * SCH_Ruin2
+         * Replaces Ruin II with Bio I/II for DoT Uptime
+        */
+        internal class SCH_Ruin2 : CustomCombo
+        {
+            protected internal override CustomComboPreset Preset { get; } = CustomComboPreset.SCH_Ruin2;
+            protected override uint Invoke(uint actionID, uint lastComboMove, float comboTime, byte level)
+            {
+                if (actionID is Ruin2 && LevelChecked(Bio))
+                {
+                    uint dot = OriginalHook(Bio); // Grab the appropriate DoT Action
+                    Status? dotDebuff = FindTargetEffect(BioList[dot]); // Match it with it's Debuff ID, and check for the Debuff
+
+                    if ((dotDebuff is null || dotDebuff?.RemainingTime <= 3) &&
+                        (GetTargetHPPercent() > Config.SCH_ST_DPS_BioOption))
+                        return dot; // Use appropriate DoT Action
+                }
+                return actionID;
+            }
+        }
+
+        /*
+         * SCH_Seraphism
+        */
+        internal class SCH_Seraphism : CustomCombo
+        {
+            protected internal override CustomComboPreset Preset { get; } = CustomComboPreset.SCH_Seraphism;
+            protected override uint Invoke(uint actionID, uint lastComboMove, float comboTime, byte level)
+            {
+                if (actionID is Seraphism && HasEffect(Buffs.Seraphism))
+                    return EmergencyTacticsInSeraphism;
+                return actionID;
+            }
+        }
+
+        /*
+         * SCH_Seraphism
+        */
+        internal class SCH_EmergencyTactics: CustomCombo
+        {
+            protected internal override CustomComboPreset Preset { get; } = CustomComboPreset.SCH_EmergencyTactics;
+            protected override uint Invoke(uint actionID, uint lastComboMove, float comboTime, byte level)
+            {
+                if (actionID is EmergencyTactics && HasEffect(Buffs.Seraphism))
+                    return Manifestation;
+                if (actionID is EmergencyTactics && IsOnCooldown(EmergencyTactics))
+                    return Adloquium;
+                return actionID;
+            }
+        }
+
     }
 }

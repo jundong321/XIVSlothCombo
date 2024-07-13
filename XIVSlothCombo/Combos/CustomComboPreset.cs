@@ -3484,9 +3484,21 @@ namespace XIVSlothCombo.Combos
         [CustomComboInfo("Rampart Option", "Use Variant Rampart on cooldown.", SCH.JobID)]
         SCH_DPS_Variant_Rampart = 16037,
 
+        [ReplaceSkill(SCH.Ruin2)]
+        [CustomComboInfo("Bio I/II on Ruin II", "Replaces Ruin II with Bio I/II for DoT Uptime", SCH.JobID, 180, "", "")]
+        SCH_Ruin2 = 16038,
+
+        [ReplaceSkill(SCH.Seraphism)]
+        [CustomComboInfo("Emergency Tactics on Seraphism", "Replaces Seraphism with Emergency Tactics when used", SCH.JobID)]
+        SCH_Seraphism = 16039,
+
+        [ReplaceSkill(SCH.EmergencyTactics)]
+        [CustomComboInfo("Emergency Tactics", "Replaces Emergency Tactics with Single Sheild", SCH.JobID)]
+        SCH_EmergencyTactics = 16040,
+
         #endregion
 
-        // Last value = 16037
+        // Last value = 16040
 
         #endregion
 
